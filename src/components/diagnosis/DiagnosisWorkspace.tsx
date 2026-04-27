@@ -486,7 +486,9 @@ export function DiagnosisWorkspace({
               >
                 <option value="">Selecione</option>
                 {DIAGNOSIS_AREA_OPTIONS.map(option => (
-                  <option key={option} value={option} />
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
               {indicatorErrors.area && <p className="mt-1 text-xs text-red-600">{indicatorErrors.area}</p>}
