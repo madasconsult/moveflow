@@ -8,6 +8,7 @@ import {
   ACTION_CLASSIFICATION_LABELS,
   ACTION_PRIORITY_COLORS,
   ACTION_PRIORITY_LABELS,
+  ACTION_STATUS_CARD_COLORS,
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
   cn,
@@ -64,7 +65,7 @@ export default async function ActionDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="page-header">
+      <div className="page-header flex-col !items-stretch gap-4 lg:flex-row lg:!items-start">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="page-title">{action.title}</h1>
@@ -76,28 +77,31 @@ export default async function ActionDetailPage({ params }: PageProps) {
             Visão simples da ação, responsável, prazo e visibilidade no portal do cliente.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/acoes" className="btn-secondary">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <Link href="/dashboard/acoes" className="btn-secondary h-10 shrink-0 whitespace-nowrap px-4">
             Voltar
           </Link>
-          <Link href={`/dashboard/fsps/novo?sourceType=action&actionId=${action.id}`} className="btn-secondary">
+          <Link
+            href={`/dashboard/fsps/novo?sourceType=action&actionId=${action.id}`}
+            className="btn-secondary h-10 shrink-0 whitespace-nowrap px-4"
+          >
             Abrir FSP
           </Link>
-          <Link href={`/dashboard/acoes/${action.id}/editar`} className="btn-primary">
+          <Link href={`/dashboard/acoes/${action.id}/editar`} className="btn-primary h-10 shrink-0 whitespace-nowrap px-4">
             <Pencil size={16} />
             Editar ação
           </Link>
           <MarkActionCompletedButton
             actionId={action.id}
             isCompleted={action.status === 'completed'}
-            containerClassName="min-w-[220px]"
-            buttonClassName="!bg-green-600 !text-white hover:!bg-green-700 focus:!ring-green-500 disabled:!bg-green-100 disabled:!text-green-700"
+            containerClassName="w-full sm:w-auto sm:min-w-[220px]"
+            buttonClassName="h-10 whitespace-nowrap px-4 !bg-green-600 !text-white hover:!bg-green-700 focus:!ring-green-500 disabled:!bg-green-100 disabled:!text-green-700"
           />
         </div>
       </div>
 
       <div className="space-y-6">
-        <div className="card p-6 space-y-6">
+        <div className={cn('card border-l-4 p-6 space-y-6', ACTION_STATUS_CARD_COLORS[action.status])}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <div className="mb-3 flex items-center gap-2">

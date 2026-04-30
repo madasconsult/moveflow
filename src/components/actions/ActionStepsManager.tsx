@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
 import { calculateActionStepProgress } from '@/lib/action-steps'
 import { createClient } from '@/lib/supabase/client'
 import {
+  ACTION_STATUS_PROGRESS_COLORS,
   ACTION_STATUS_COLORS,
   ACTION_STATUS_LABELS,
+  ACTION_STATUS_ROW_COLORS,
   cn,
   formatDate,
 } from '@/lib/utils'
@@ -284,7 +286,7 @@ export function ActionStepsManager({
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-100">
             <div
-              className="h-full rounded-full bg-brand-600 transition-all"
+              className={cn('h-full rounded-full transition-all', ACTION_STATUS_PROGRESS_COLORS[parentStatus])}
               style={{ width: `${progress.percentage}%` }}
             />
           </div>
@@ -376,7 +378,7 @@ export function ActionStepsManager({
                 const isSaving = savingId === step.id
 
                 return (
-                  <tr key={step.id} className="transition-colors hover:bg-neutral-50">
+                  <tr key={step.id} className={cn('border-l-4 transition-colors hover:bg-neutral-50', ACTION_STATUS_ROW_COLORS[step.status])}>
                     <td className="px-4 py-3 align-top">
                       {canEdit ? (
                         <input
@@ -416,18 +418,23 @@ export function ActionStepsManager({
                     </td>
                     <td className="px-4 py-3 align-top">
                       {canEdit ? (
-                        <select
-                          value={draft.status}
-                          onChange={event => updateDraft(step.id, { ...draft, status: event.target.value as ActionStatus })}
-                          className="input min-w-[180px]"
-                          disabled={isSaving}
-                        >
-                          {STATUS_OPTIONS.map(status => (
-                            <option key={status} value={status}>
-                              {ACTION_STATUS_LABELS[status]}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="space-y-2">
+                          <select
+                            value={draft.status}
+                            onChange={event => updateDraft(step.id, { ...draft, status: event.target.value as ActionStatus })}
+                            className="input min-w-[180px]"
+                            disabled={isSaving}
+                          >
+                            {STATUS_OPTIONS.map(status => (
+                              <option key={status} value={status}>
+                                {ACTION_STATUS_LABELS[status]}
+                              </option>
+                            ))}
+                          </select>
+                          <span className={cn('badge', ACTION_STATUS_COLORS[draft.status])}>
+                            {ACTION_STATUS_LABELS[draft.status]}
+                          </span>
+                        </div>
                       ) : (
                         <span className={cn('badge', ACTION_STATUS_COLORS[step.status])}>
                           {ACTION_STATUS_LABELS[step.status]}
@@ -451,7 +458,7 @@ export function ActionStepsManager({
                           </button>
                           <button
                             type="button"
-                            className="btn-primary"
+                            className="btn-primary !bg-green-600 hover:!bg-green-700 focus:!ring-green-500"
                             onClick={() => handleCompleteStep(step)}
                             disabled={isSaving || step.status === 'completed'}
                           >

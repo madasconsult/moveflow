@@ -243,13 +243,43 @@ export const ACTION_PRIORITY_COLORS: Record<ActionPriority, string> = {
 }
 
 export const ACTION_STATUS_COLORS: Record<ActionStatus, string> = {
-  not_started: 'bg-neutral-100 text-neutral-600',
-  in_progress: 'bg-blue-50 text-blue-700',
-  waiting_client: 'bg-amber-50 text-amber-700',
-  waiting_faus: 'bg-violet-50 text-violet-700',
-  completed: 'bg-green-50 text-green-700',
-  overdue: 'bg-red-50 text-red-700',
-  cancelled: 'bg-neutral-100 text-neutral-500',
+  not_started: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
+  in_progress: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200',
+  waiting_client: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
+  waiting_faus: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
+  completed: 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-200',
+  overdue: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
+  cancelled: 'bg-neutral-100 text-neutral-600 ring-1 ring-inset ring-neutral-300',
+}
+
+export const ACTION_STATUS_CARD_COLORS: Record<ActionStatus, string> = {
+  not_started: 'border-l-slate-300 bg-slate-50/30',
+  in_progress: 'border-l-blue-500 bg-blue-50/30',
+  waiting_client: 'border-l-amber-500 bg-amber-50/30',
+  waiting_faus: 'border-l-violet-500 bg-violet-50/30',
+  completed: 'border-l-green-500 bg-green-50/30',
+  overdue: 'border-l-red-500 bg-red-50/30',
+  cancelled: 'border-l-neutral-400 bg-neutral-50',
+}
+
+export const ACTION_STATUS_ROW_COLORS: Record<ActionStatus, string> = {
+  not_started: 'border-l-slate-300',
+  in_progress: 'border-l-blue-500 bg-blue-50/20',
+  waiting_client: 'border-l-amber-500 bg-amber-50/20',
+  waiting_faus: 'border-l-violet-500 bg-violet-50/20',
+  completed: 'border-l-green-500 bg-green-50/20',
+  overdue: 'border-l-red-500 bg-red-50/20',
+  cancelled: 'border-l-neutral-400 bg-neutral-50/70',
+}
+
+export const ACTION_STATUS_PROGRESS_COLORS: Record<ActionStatus, string> = {
+  not_started: 'bg-slate-400',
+  in_progress: 'bg-blue-600',
+  waiting_client: 'bg-amber-500',
+  waiting_faus: 'bg-violet-500',
+  completed: 'bg-green-600',
+  overdue: 'bg-red-600',
+  cancelled: 'bg-neutral-500',
 }
 
 export const MEETING_TYPE_COLORS: Record<MeetingType, string> = {
