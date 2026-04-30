@@ -307,17 +307,17 @@ export function ActionStepsManager({
       {canEdit && (
         <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
           <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_150px_180px_auto]">
-            <input
+            <textarea
               value={newTitle}
               onChange={event => setNewTitle(event.target.value)}
-              className="input"
+              className="input min-h-[72px] resize-y whitespace-pre-wrap break-words leading-relaxed"
               placeholder="Título da etapa"
               disabled={creating}
             />
-            <input
+            <textarea
               value={newDescription}
               onChange={event => setNewDescription(event.target.value)}
-              className="input"
+              className="input min-h-[72px] resize-y whitespace-pre-wrap break-words leading-relaxed"
               placeholder="Descrição opcional"
               disabled={creating}
             />
@@ -379,28 +379,28 @@ export function ActionStepsManager({
 
                 return (
                   <tr key={step.id} className={cn('border-l-4 transition-colors hover:bg-neutral-50', ACTION_STATUS_ROW_COLORS[step.status])}>
-                    <td className="px-4 py-3 align-top">
+                    <td className="max-w-[360px] px-4 py-3 align-top">
                       {canEdit ? (
-                        <input
+                        <textarea
                           value={draft.title}
                           onChange={event => updateDraft(step.id, { ...draft, title: event.target.value })}
-                          className="input min-w-[220px]"
+                          className="input min-h-[72px] min-w-[280px] resize-y whitespace-pre-wrap break-words leading-relaxed"
                           disabled={isSaving}
                         />
                       ) : (
-                        <span className="font-medium text-neutral-900">{step.title}</span>
+                        <span className="block whitespace-pre-wrap break-words font-medium leading-relaxed text-neutral-900">{step.title}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 align-top">
+                    <td className="max-w-[420px] px-4 py-3 align-top">
                       {canEdit ? (
-                        <input
+                        <textarea
                           value={draft.description}
                           onChange={event => updateDraft(step.id, { ...draft, description: event.target.value })}
-                          className="input min-w-[240px]"
+                          className="input min-h-[72px] min-w-[320px] resize-y whitespace-pre-wrap break-words leading-relaxed"
                           disabled={isSaving}
                         />
                       ) : (
-                        <span className="text-neutral-700">{step.description ?? '—'}</span>
+                        <span className="block whitespace-pre-wrap break-words leading-relaxed text-neutral-700">{step.description ?? '—'}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 align-top">
