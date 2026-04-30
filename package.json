@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.types.ts"
+    "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.types.ts",
+    "import:actions:dry-run": "node scripts/import-action-plan.mjs --dry-run",
+    "import:actions:apply": "node scripts/import-action-plan.mjs --apply"
   },
   "dependencies": {
     "next": "14.2.5",
