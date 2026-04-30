@@ -1,0 +1,78 @@
+﻿Cliente;Projeto;ID original;Tópico;Área;Ação;Responsável;Prazo;Data de conclusão;Status;Observações;Status original;Pessoa FAUS original;Pessoa Dedé original
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;1;MELHORIAS OPERACIONAIS;RECEBIMENTO;Melhoria na atividade de recebimento de mercadoria: Comprar Leitor Optico estilo Supermercado (1 para teste);Manoel Malta Filho;21/01/2026;03/02/2026;Concluída;"03/02 - Teste realizado com leitor fornecido pelo fornecedor dos coletores
+06/02 - Qualidade do material testado é superior aos utilizado atualmente, leitura mais dinamica e mais rápida.";Realizado;Manoel;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;2;MELHORIAS OPERACIONAIS;RECEBIMENTO;Realizar o Teste com o Leitor Supermercado em mesas diferentes, emitir a análise final e recomendação.;Manoel Malta Filho;13/02/2026;03/02/2026;Concluída;"03/02 - Teste realizado com leitor fornecido pelo fornecedor dos coletores
+06/02 - Qualidade do material testado é superior aos utilizado atualmente, leitura mais dinamica e mais rápida.";Realizado;Manoel;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;3;MELHORIAS OPERACIONAIS;RECEBIMENTO;5s na área de recebimento: Melhoria do Layout, identificação dos espaços, controle visual do tempo que o material está aguardando.;Manoel Malta Filho;19/02/2026;20/02/2026;Concluída;"Padrinho de rua, estender para todo armazém.
+06/02 - Validar na próxima dedicaçao este ponto. Vincular com a produtividade.
+
+18/02 - Criação de placa de Controle de Recebimento de produto, com controle visual, identificaçao de Recebimento regular e Prioridade.";Realizado;Manoel/Vinicius;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;4;ANÁLISE DE DADOS;ARMAZÉM;Gerar Bases de venda aberto por tipo de venda (Balcão e Entrega), do período de Jan a Dez/25;Manoel Malta Filho;15/01/2026;15/01/2026;Concluída;;Realizado;;Guilherme
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;5;ANÁLISE DE DADOS;ARMAZÉM;"Analisar os dados e Gerar:
+
+- Curva ABC dos Produtos
+- Gerar Lista de Necessidade de Movimentação de Itens conforme curva ABC.
+- Montar análise geral conforme os dados";Manoel Malta Filho;30/01/2026;30/01/2026;Concluída;06/02 - Realizar manutençao desta açao (continuidade);Realizado;Manoel/Vinicius;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;6;LAYOUT NOVO CD;ARMAZÉM;"Sugestão de Layout para novo CD:
+- Fluxo de Movimentação
+- Capacidade do armazem";Manoel Malta Filho;10/03/2026;01/04/2026;Concluída;"06/02 - Em andamento. Layout desenhado, confirmar o tema de Porta Paletes e mini-porta paletes (orçamento e procura dos equipamentos)
+
+15/04 - Finalizado em 01/04. CD NOVO/CD Tito Fulgencio";Realizado;Vinicius;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;7;RESULT;GERAL;Atualizar status com time da Result;Manoel Malta Filho;20/01/2026;19/01/2026;Concluída;;Realizado;Manoel;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;8;WMS;EQUIPAMENTOS;Realizar orçamentos dos coletores e impressoras para o WMS Para previsão de investimento dos equipamentos;Manoel Malta Filho;30/01/2026;30/01/2026;Concluída;"Cotar coletores (COMPEX - Zebra - Honey) e Leitores Fixos (Bematech - Zebra - Simbol)
+
+15/04 - Orçamento já realizado e compra realizada de 4 coletores e impressores.";Realizado;Manoel;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;9;RESULT;GERAL;Relacionamento das Tabelas do Banco de Dados;Manoel Malta Filho;04/05/2026;;Iniciada;"Como não existe acesso direto ao banco de dados, será necessário criar um banco de dados.
+06/02 - Reuniao a ser realizada hoje para finalizar o tema.
+
+15/04 - Verificar com Breno (RESULT) as informaçoes que precisa para rodar o BI.";Em Andamento;;Muller
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;10;MELHORIAS OPERACIONAIS;ARMAZÉM;Coletar cadastro logístico dos Produtos Para ter os dados de (Cubagem x Peso x Fator);Manoel Malta Filho;30/06/2026;;Iniciada;"Pegar apoio com os fornecedores, pegar o maximo de informações dos produtos. (Fator de conversão, codigos de barras, cubagem Etc..)
+06/02 - Envolver Guilherme de compras para contato e relacionamento com os fornecedores.
+
+15/04 - Em Andamento via Compras.
+
+Obs: - Para dimensoes (peso, altura, largura) pode ser utilizada a informação do similar. Para EAN e DUN tem que ser do codigo interno.";Em Andamento;;Jeber / Guilherme
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;11;MELHORIAS OPERACIONAIS;GERAL;Verificar LEAD TIME dos fornecedores Para tentar negociar prazos de montagem de plano de negócio;Manoel Malta Filho;15/05/2026;;Iniciada;"Não localizei estes arquivos no servidor.
+06/02 - Calcular o lead time programado x lead time real (pedido x entrega), com o acesso ao banco de dados poderemos fazer este racional.
+
+15/04 - em andamento, criar plano separado com cronograma para realizaçao desta açao.";Em Andamento;;Guilherme
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;12;MELHORIAS OPERACIONAIS;ARMAZÉM;Trabalhar no primeiro arranjo fisico das mercadorias excesso nos andares superiores Para pegar produtos de curva A+ e A e deixar abastecido na loja;Manoel Malta Filho;20/02/2026;30/03/2026;Concluída;"Atuar na planilha da consultoria, conforme a curva ABC e dias de estoque do produto. Avaliando a quantidade minima de itens para picking 
+06/02 - A+ e A já foram concluidos, necessario atualizar curva B e C para dar continuidade. Atualizar Excel conforme sistema.";Realizado;;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;13;MELHORIAS OPERACIONAIS;RECEBIMENTO;Realizar a guarda dos produtos atrasados no recebimento Para deixar o produto abastecido e disponível para a expedição;Manoel Malta Filho;01/02/2026;01/02/2026;Concluída;Verificar na área de recebimento os produtos conferidos que estão em atraso.;Realizado;;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;14;MELHORIAS OPERACIONAIS;RECEBIMENTO;Fazer politica de prazos nos modelos de venda (Retira - Balcão - Entrega) Para disponibilizar o produto para venda de forma mais assertiva;Manoel Malta Filho;30/04/2026;;Iniciada;"Rever prazos de produtos retira, pelo menos 24 horas para voltarem para o estoque.
+
+15/04 - DEFINIÇAO DAS REGRAS E FORMALIZAÇÃO.
+
+Prazo Acordado = 48h
+
+Jeber envia comunicado oficial para time comercial.
+Mensurar nome do vendedor da mercadoria que retornar para o estoque.";Em Andamento;Manoel/Vinicius;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;15;MELHORIAS OPERACIONAIS;ARMAZÉM;Orçamento de lavadora de piso CD e Loja (Venda e Aluguel) Para melhoria de limpeza e organização do ambiente;Manoel Malta Filho;30/05/2026;;Iniciada;Verificando modelo BD-5050 Bateria ;Em Andamento;Vinicius;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;16;MELHORIAS OPERACIONAIS;ARMAZÉM;Verificar as tratativas de bloqueio para produtos que tem corte no dia anterior;Manoel Malta Filho;30/03/2026;01/04/2026;Concluída;"19/02 - sistema não oferece opção de bloqueio de produto, hoje é colocado estoque zero para evitar a venda. Necessário confirmar a diferença entre estoque Logístico e Fiscal. Expectativa de mudança no processo quando implementado o KAIZEN.
+15/04 - Montado processo junto com Guilherme onde pegamos o item e é alocado no Setor de Garantia (nuvem - inventário de locação).";Realizado;Manoel;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;17;MELHORIAS OPERACIONAIS;ARMAZÉM;Implementar rotina de inventariar os itens que sofreram corte no dia anterior.;Manoel Malta Filho;23/03/2026;01/04/2026;Concluída;"19/02- Francisco está fazendo esta tratativa. Francisco procura, Vitor faz a tratativa no sistema.
+15/04 - Rotina implementada (Setor de Garantia / nuvem / inventario de locaçao)";Realizado;;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;18;LAYOUT NOVO CD;ARMAZÉM;Crítica do Layout Atual Matriz;Manoel Malta Filho;30/04/2026;;Iniciada;"Processo em Andamento 
+
+15/04 - Primeiro nível finalizado, Rascunho do segundo nível. Prazo atualizado para 30/04";Em Andamento;Manoel/Vinícius;Eduardo/Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;19;MELHORIAS OPERACIONAIS;RECEBIMENTO;Definir quantidade correta de leitores Supermercado para utilização correta e otimizada do recurso.;Manoel Malta Filho;19/02/2026;06/02/2026;Concluída;06/02 - Informar ao time a definiçao da conferencia com multiplicador para ganho de velocidade em detrimento ao impacto (pequeno) para a equipe da loja. Comprar 4 de imediato para validação.;Realizado;Manoel;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;20;MELHORIAS OPERACIONAIS;RECEBIMENTO;Validar o uso dos 4 coletores de mesa e confirmar a quantidade de compra restante;Manoel Malta Filho;19/02/2026;01/04/2026;Concluída;15/04 - validados, iniciar o uso antes da entrada do Kaizen.;Realizado;Manoel;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;21;RESULT;GERAL;Reuniao para definir assinatura do NDA;Manoel Malta Filho;13/02/2026;15/04/2026;Concluída;15/04 - não vai acontecer.;Realizado;Vinicius;Eduardo/Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;22;GESTÃO;GERAL;Criar o macro fluxo da Dedé;Manoel Malta Filho;30/04/2026;;Iniciada;15/04 - em andamento, prazo atualizado para 30/4;Em Andamento;Manoel;Eduardo
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;23;GESTÃO;GERAL;Desenvolver ferramenta para acesso e desdobramento dos Microfluxos;Manoel Malta Filho;30/05/2026;;Iniciada;15/04 em andamento;Em Andamento;Manoel;Eduardo
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;24;GESTÃO;GERAL;Criar a RACI Macro da Dedé, dos principais processos da empresa.;Manoel Malta Filho;30/05/2026;;Iniciada;15/04 em andamento;Em Andamento;Manoel;Eduardo
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;25;GESTÃO;COMERCIAL;Criar ação para definir que os produtos de curva C - D e E sejam relacionados a uma unica marca, ou seja, rever estudo do Eduardo e gerar ações para redução do de estoque.;Manoel Malta Filho;;;Iniciada;Na dedicação do dia 10/03 Eduardo apresentou um estudo de giro e foi questionado sobre a existenência de inumeros itens de curva C e D que temos diversas marcas. ;;Manoel;Eduardo/Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;26;GESTÃO;GERAL;Fazer estudo detalhado após a aprovação do Layout dos produtos que serão armazenados na nova operação CD.;Manoel Malta Filho;;;Iniciada;Realizar Dimensionamento dos produtos que serão trabalhados no CD novo;;Manoel;Eduardo/Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;27;GESTÃO;GERAL;Fazer estudo detalhado se a operação nova CD, poderá atender exlusivamente o Delivery;Manoel Malta Filho;15/04/2026;15/04/2026;Concluída;"Foi levantado um modelo de negócio para que o Delivery seja trabalhado no Cd novo. 
+
+15/04 - Delivery será centralizado na Matriz";Realizado;Manoel;Eduardo/Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;28;MELHORIAS OPERACIONAIS;ARMAZÉM;Atualizar arranjo fisico das mercadorias excesso nos andares superiores Para pegar produtos de curva A+ e A e deixar abastecido na loja - SEGUNDA ONDA;Manoel Malta Filho;30/05/2026;;Iniciada;;Em Andamento;;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;29;LAYOUT NOVA LOJA;ARMAZÉM;Definiçao de curva ABC e implementar layout conforme curva de produtos.;Manoel Malta Filho;30/05/2026;;Iniciada;;Em Andamento;Manoel;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;30;WMS;;"Levar debate para time da Kaizen e confirmar a possibilidade de ""Picking Estendido"" (quando não couber em um endereço, como adicionamos outro).";Manoel Malta Filho;25/04/2026;;Iniciada;;Em Andamento;Manoel/Vinicius;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;31;WMS;;Impressao de etiqueta no Kaizen : Correçao dos erros.;Manoel Malta Filho;29/04/2026;;Iniciada;15/04 - na semana de dedicaçao de 11 a 17/04 foi constatado os erros na impressao das etiquetas.;Em Andamento;Manoel/Vinicius;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;32;WMS;;Colagem das etiquetas: criar cronograma por piso, por área.;Manoel Malta Filho;15/05/2026;;Iniciada;;Em Andamento;;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;33;WMS;;Realizaçao de Teste de Recebimento / Expediçao / etc;Manoel Malta Filho;30/05/2026;;Iniciada;;Em Andamento;Manoel/Vinicius;Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;34;MODELO DE NEGOCIO;;Desenho do modelo de negócio do Dedé Autopeças (modelo de apresentaçao da Santa Cruz);Manoel Malta Filho;30/04/2026;;Iniciada;;Em Andamento;Manoel/Vinicius;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;35;MODELO DE NEGOCIO;;Criaçao de fluxo de processo futuro (Fluxo de materiais e abastecimento, o que entra no CD, para onde abastece);Manoel Malta Filho;30/05/2026;;Iniciada;;Em Andamento;Manoel/Vinicius;
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;36;;;Definiçao de indicadores de desempenho;Manoel Malta Filho;15/05/2026;;Iniciada;15/04 - FAUS disponibilizou modelo de KPIs para DEDE Autopeças, para que sejam preenchidas as informaçoes.;Em Andamento;Manoel/Vinicius;Eduardo/Jeber
+Dedé Autopeças;Dedé autopeças - Processos Logísticos, WMS e Layout;37;;;Reuniao de acompanhamento com Kaizen: Definir agenda semanal e acompanhamento com eles.;Manoel Malta Filho;23/04/2026;;Iniciada;15/04 - definir a primeira data e fechar agenda.;Em Andamento;Manoel/Vinicius;
