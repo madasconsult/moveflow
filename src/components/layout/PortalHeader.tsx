@@ -3,14 +3,18 @@
 import { useRouter } from 'next/navigation'
 import { LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ActiveProjectSelector } from '@/components/projects/ActiveProjectSelector'
 import type { Profile } from '@/types/database.types'
+import type { ActiveProjectOption } from '@/lib/active-project/server'
 import { getInitials, ROLE_LABELS } from '@/lib/utils'
 
 interface PortalHeaderProps {
   profile: Profile
+  projects: ActiveProjectOption[]
+  activeProjectId: string | null
 }
 
-export function PortalHeader({ profile }: PortalHeaderProps) {
+export function PortalHeader({ profile, projects, activeProjectId }: PortalHeaderProps) {
   const router = useRouter()
 
   async function handleSignOut() {
@@ -21,10 +25,12 @@ export function PortalHeader({ profile }: PortalHeaderProps) {
   }
 
   return (
-    <header className="flex items-center justify-between h-[60px] px-6 bg-white border-b border-neutral-200 shrink-0">
+    <header className="flex min-h-[76px] items-center justify-between gap-4 px-6 bg-white border-b border-neutral-200 shrink-0">
       <div />
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <ActiveProjectSelector projects={projects} activeProjectId={activeProjectId} />
+
         <div className="flex items-center gap-2 px-2">
           <div className="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-semibold">
             {getInitials(profile.full_name)}

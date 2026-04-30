@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Plus, TrendingUp } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
+import { ActiveProjectEmptyState } from '@/components/projects/ActiveProjectEmptyState'
 import {
   formatMeasurementValue,
   KPI_STATUS_COLORS,
@@ -44,10 +46,30 @@ export default async function KpisPage() {
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
   if (session.profile.role === 'cliente') redirect('/portal')
 
+  const activeProjectContext = await getActiveProjectContext(session.profile)
+  const activeProjectId = activeProjectContext.activeProjectId
+
+  if (!activeProjectId) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">KPIs</h1>
+            <p className="page-subtitle">
+              Acompanhe indicadores do projeto ativo.
+            </p>
+          </div>
+        </div>
+        <ActiveProjectEmptyState />
+      </div>
+    )
+  }
+
   const supabase = await createClient()
   const { data } = await supabase
     .from('kpis')
     .select('id, project_id, kpi_name, responsible_id, diagnosis_indicator_id, current_value, target_value, unit_of_measure, status, trend, visible_to_client, updated_at')
+    .eq('project_id', activeProjectId)
     .order('updated_at', { ascending: false })
 
   const kpis: KpiListItem[] = (data as KpiListItem[] | null) ?? []
@@ -87,7 +109,7 @@ export default async function KpisPage() {
         <div>
           <h1 className="page-title">KPIs</h1>
           <p className="page-subtitle">
-            Acompanhe indicadores com valor atual, meta, tendência e visibilidade ao cliente.
+            Acompanhe indicadores do projeto ativo: {activeProjectContext.activeProject?.project_name}.
           </p>
         </div>
         {session.profile.role === 'admin_faus' && (
@@ -104,9 +126,7 @@ export default async function KpisPage() {
             <TrendingUp size={36} className="mb-4 text-neutral-300" />
             <h2 className="text-base font-semibold text-neutral-900">Nenhum KPI disponível</h2>
             <p className="mt-1 max-w-md text-sm text-neutral-500">
-              {session.profile.role === 'admin_faus'
-                ? 'Cadastre o primeiro indicador para iniciar o acompanhamento executivo desta fase.'
-                : 'Os KPIs dos projetos aos quais você está vinculado aparecerão aqui automaticamente.'}
+              Nenhum registro encontrado para este projeto.
             </p>
             {session.profile.role === 'admin_faus' && (
               <Link href="/dashboard/kpis/novo" className="btn-primary mt-5">

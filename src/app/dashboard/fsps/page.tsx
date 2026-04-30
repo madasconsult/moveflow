@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SearchCheck } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
+import { ActiveProjectEmptyState } from '@/components/projects/ActiveProjectEmptyState'
 import {
   FSP_METHOD_TYPE_LABELS,
   FSP_SOURCE_TYPE_LABELS,
@@ -31,10 +33,30 @@ export default async function FspsPage() {
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
   if (session.profile.role === 'cliente') redirect('/portal')
 
+  const activeProjectContext = await getActiveProjectContext(session.profile)
+  const activeProjectId = activeProjectContext.activeProjectId
+
+  if (!activeProjectId) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">FSPs</h1>
+            <p className="page-subtitle">
+              Acompanhe análises estruturadas do projeto ativo.
+            </p>
+          </div>
+        </div>
+        <ActiveProjectEmptyState />
+      </div>
+    )
+  }
+
   const supabase = await createClient()
   const { data } = await supabase
     .from('fsps')
     .select('id, project_id, title, source_type, kpi_id, linked_action_id, generated_action_id, method_type, status, owner_id, opened_at')
+    .eq('project_id', activeProjectId)
     .order('opened_at', { ascending: false })
 
   const fsps: FspListItem[] = (data as FspListItem[] | null) ?? []
@@ -64,7 +86,7 @@ export default async function FspsPage() {
         <div>
           <h1 className="page-title">FSPs</h1>
           <p className="page-subtitle">
-            Acompanhe análises estruturadas de problema por KPI/período ou por ação, com método, status e desdobramento.
+            Acompanhe análises estruturadas do projeto ativo: {activeProjectContext.activeProject?.project_name}.
           </p>
         </div>
       </div>
@@ -75,7 +97,7 @@ export default async function FspsPage() {
             <SearchCheck size={36} className="mb-4 text-neutral-300" />
             <h2 className="text-base font-semibold text-neutral-900">Nenhuma FSP disponível</h2>
             <p className="mt-1 max-w-md text-sm text-neutral-500">
-              Crie uma FSP a partir de uma apuração de KPI/período ou a partir de uma ação existente.
+              Nenhum registro encontrado para este projeto.
             </p>
           </div>
         ) : (

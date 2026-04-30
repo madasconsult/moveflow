@@ -3,8 +3,10 @@ import Link from 'next/link'
 import { CheckSquare, Plus, Rows4, Workflow } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { calculateActionStepProgress } from '@/lib/action-steps'
+import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
+import { ActiveProjectEmptyState } from '@/components/projects/ActiveProjectEmptyState'
 import {
   ACTION_PRIORITY_COLORS,
   ACTION_PRIORITY_LABELS,
@@ -38,7 +40,6 @@ type StepLookup = Pick<ActionStep, 'action_id' | 'status'>
 interface ActionsPageProps {
   searchParams?: {
     view?: string
-    projectId?: string
     statusGroup?: string
   }
 }
@@ -62,20 +63,34 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
   if (session.profile.role === 'cliente') redirect('/portal')
 
   const view = searchParams?.view === 'pipeline' ? 'pipeline' : 'list'
-  const projectIdFilter = searchParams?.projectId ?? ''
   const statusGroup = searchParams?.statusGroup ?? ''
+  const activeProjectContext = await getActiveProjectContext(session.profile)
+  const activeProjectId = activeProjectContext.activeProjectId
+
+  if (!activeProjectId) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Ações</h1>
+            <p className="page-subtitle">
+              Acompanhe ações por tabela ou pipeline, com conclusão formal, ID de negócio e filtros locais.
+            </p>
+          </div>
+        </div>
+        <ActiveProjectEmptyState />
+      </div>
+    )
+  }
 
   const supabase = await createClient()
   const { data } = await supabase
     .from('actions')
     .select('id, business_id, project_id, title, assigned_to, status, priority, due_date, completion_date, visible_to_client, updated_at')
+    .eq('project_id', activeProjectId)
     .order('due_date', { ascending: true, nullsFirst: false })
 
   let actions: ActionListItem[] = (data as ActionListItem[] | null) ?? []
-
-  if (projectIdFilter) {
-    actions = actions.filter(action => action.project_id === projectIdFilter)
-  }
 
   if (statusGroup === 'pending') {
     actions = actions.filter(action => ['not_started', 'in_progress', 'waiting_faus'].includes(action.status))
@@ -125,19 +140,19 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
         <div>
           <h1 className="page-title">Ações</h1>
           <p className="page-subtitle">
-            Acompanhe ações por tabela ou pipeline, com conclusão formal, ID de negócio e filtros por projeto.
+            Acompanhe ações por tabela ou pipeline no projeto ativo: {activeProjectContext.activeProject?.project_name}.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href={`/dashboard/acoes?view=list${projectIdFilter ? `&projectId=${projectIdFilter}` : ''}${statusGroup ? `&statusGroup=${statusGroup}` : ''}`}
+            href={`/dashboard/acoes?view=list${statusGroup ? `&statusGroup=${statusGroup}` : ''}`}
             className={view === 'list' ? 'btn-primary' : 'btn-secondary'}
           >
             <Rows4 size={16} />
             Lista
           </Link>
           <Link
-            href={`/dashboard/acoes?view=pipeline${projectIdFilter ? `&projectId=${projectIdFilter}` : ''}${statusGroup ? `&statusGroup=${statusGroup}` : ''}`}
+            href={`/dashboard/acoes?view=pipeline${statusGroup ? `&statusGroup=${statusGroup}` : ''}`}
             className={view === 'pipeline' ? 'btn-primary' : 'btn-secondary'}
           >
             <Workflow size={16} />
@@ -157,9 +172,7 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
           <CheckSquare size={36} className="mb-4 text-neutral-300" />
           <h2 className="text-base font-semibold text-neutral-900">Nenhuma ação disponível</h2>
           <p className="mt-1 max-w-md text-sm text-neutral-500">
-            {session.profile.role === 'admin_faus'
-              ? 'Crie a primeira ação para iniciar o acompanhamento operacional desta fase.'
-              : 'As ações vinculadas aos seus projetos aparecerão aqui automaticamente conforme o RLS.'}
+            Nenhum registro encontrado para este projeto.
           </p>
           {session.profile.role === 'admin_faus' && (
             <Link href="/dashboard/acoes/novo" className="btn-primary mt-5">

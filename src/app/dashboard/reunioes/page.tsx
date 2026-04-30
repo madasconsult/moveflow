@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CalendarDays, List, Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
+import { ActiveProjectEmptyState } from '@/components/projects/ActiveProjectEmptyState'
 import {
   MEETING_TYPE_COLORS,
   MEETING_TYPE_LABELS,
@@ -47,11 +49,30 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
   const view = searchParams?.view === 'calendar' ? 'calendar' : 'table'
   const period = searchParams?.period === 'week' || searchParams?.period === 'day' ? searchParams.period : 'month'
   const baseDate = searchParams?.date ? new Date(searchParams.date) : new Date()
+  const activeProjectContext = await getActiveProjectContext(session.profile)
+  const activeProjectId = activeProjectContext.activeProjectId
+
+  if (!activeProjectId) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Reuniões</h1>
+            <p className="page-subtitle">
+              Acompanhe reuniões em tabela ou calendário, com participantes persistidos.
+            </p>
+          </div>
+        </div>
+        <ActiveProjectEmptyState />
+      </div>
+    )
+  }
 
   const supabase = await createClient()
   const { data } = await supabase
     .from('meetings')
     .select('id, project_id, meeting_type, meeting_date, executive_summary, participants, visible_to_client, updated_at')
+    .eq('project_id', activeProjectId)
     .order('meeting_date', { ascending: false })
 
   const meetings: MeetingListItem[] = (data as MeetingListItem[] | null) ?? []
@@ -71,7 +92,7 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
         <div>
           <h1 className="page-title">Reuniões</h1>
           <p className="page-subtitle">
-            Acompanhe reuniões em tabela ou calendário, com participantes persistidos e navegação por compromisso.
+            Acompanhe reuniões do projeto ativo: {activeProjectContext.activeProject?.project_name}.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -119,9 +140,7 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
               <CalendarDays size={36} className="mb-4 text-neutral-300" />
               <h2 className="text-base font-semibold text-neutral-900">Nenhuma reunião registrada</h2>
               <p className="mt-1 max-w-md text-sm text-neutral-500">
-                {session.profile.role === 'admin_faus'
-                  ? 'Crie o primeiro registro de reunião para acompanhar decisões e próximos passos dos projetos.'
-                  : 'As reuniões dos projetos aos quais você está vinculado aparecerão aqui automaticamente.'}
+                Nenhum registro encontrado para este projeto.
               </p>
               {session.profile.role === 'admin_faus' && (
                 <Link href="/dashboard/reunioes/novo" className="btn-primary mt-5">

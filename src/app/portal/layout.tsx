@@ -3,6 +3,7 @@ import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { PortalSidebar } from '@/components/layout/PortalSidebar'
 import { PortalHeader } from '@/components/layout/PortalHeader'
 import { AuthProvider } from '@/components/auth/AuthProvider'
+import { getActiveProjectContext } from '@/lib/active-project/server'
 
 export default async function PortalLayout({
   children,
@@ -19,12 +20,18 @@ export default async function PortalLayout({
 
   if (profile.role !== 'cliente') redirect('/dashboard')
 
+  const activeProjectContext = await getActiveProjectContext(profile)
+
   return (
     <AuthProvider profile={profile}>
       <div className="dashboard-shell flex h-screen overflow-hidden">
         <PortalSidebar profile={profile} />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <PortalHeader profile={profile} />
+          <PortalHeader
+            profile={profile}
+            projects={activeProjectContext.projects}
+            activeProjectId={activeProjectContext.activeProjectId}
+          />
           <main className="flex-1 overflow-y-auto px-6 py-7 animate-page lg:px-8">
             {children}
           </main>

@@ -3,14 +3,18 @@
 import { useRouter } from 'next/navigation'
 import { LogOut, Bell } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ActiveProjectSelector } from '@/components/projects/ActiveProjectSelector'
 import type { Profile } from '@/types/database.types'
+import type { ActiveProjectOption } from '@/lib/active-project/server'
 import { getInitials, ROLE_LABELS } from '@/lib/utils'
 
 interface HeaderProps {
   profile: Profile
+  projects: ActiveProjectOption[]
+  activeProjectId: string | null
 }
 
-export function Header({ profile }: HeaderProps) {
+export function Header({ profile, projects, activeProjectId }: HeaderProps) {
   const router = useRouter()
 
   async function handleSignOut() {
@@ -31,7 +35,9 @@ export function Header({ profile }: HeaderProps) {
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <ActiveProjectSelector projects={projects} activeProjectId={activeProjectId} />
+
         <button
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 shadow-sm"
           aria-label="Notificações"

@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { FileText, Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { DocumentsWorkspace } from '@/components/documents/DocumentsWorkspace'
+import { ActiveProjectEmptyState } from '@/components/projects/ActiveProjectEmptyState'
 import type { Document, DocumentFolder, Project, Profile } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Documentos' }
@@ -34,19 +36,41 @@ export default async function DocumentsPage() {
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
   if (session.profile.role === 'cliente') redirect('/portal')
 
+  const activeProjectContext = await getActiveProjectContext(session.profile)
+  const activeProjectId = activeProjectContext.activeProjectId
+
+  if (!activeProjectId) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Documentos</h1>
+            <p className="page-subtitle">
+              Organize documentos por pastas dentro do projeto ativo.
+            </p>
+          </div>
+        </div>
+        <ActiveProjectEmptyState />
+      </div>
+    )
+  }
+
   const supabase = await createClient()
   const [{ data: documentsData }, { data: foldersData }, { data: projectsData }] = await Promise.all([
     supabase
       .from('documents')
       .select('id, project_id, folder_id, document_name, category, responsible_id, status, visibility, updated_at')
+      .eq('project_id', activeProjectId)
       .order('updated_at', { ascending: false }),
     supabase
       .from('document_folders')
       .select('id, project_id, folder_name, parent_folder_id')
+      .eq('project_id', activeProjectId)
       .order('folder_name'),
     supabase
       .from('projects')
       .select('id, project_name')
+      .eq('id', activeProjectId)
       .order('project_name'),
   ])
 
@@ -81,7 +105,7 @@ export default async function DocumentsPage() {
         <div>
           <h1 className="page-title">Documentos</h1>
           <p className="page-subtitle">
-            Organize os documentos por pastas, projeto, categoria, status e visibilidade ao cliente.
+            Organize documentos do projeto ativo: {activeProjectContext.activeProject?.project_name}.
           </p>
         </div>
         {session.profile.role === 'admin_faus' && (
@@ -97,9 +121,7 @@ export default async function DocumentsPage() {
           <FileText size={36} className="mb-4 text-neutral-300" />
           <h2 className="text-base font-semibold text-neutral-900">Nenhum documento disponível</h2>
           <p className="mt-1 max-w-md text-sm text-neutral-500">
-            {session.profile.role === 'admin_faus'
-              ? 'Cadastre o primeiro documento e organize-o em pastas simples por projeto.'
-              : 'Os documentos dos projetos aos quais você está vinculado aparecerão aqui automaticamente.'}
+            Nenhum registro encontrado para este projeto.
           </p>
           {session.profile.role === 'admin_faus' && (
             <Link href="/dashboard/documentos/novo" className="btn-primary mt-5">
