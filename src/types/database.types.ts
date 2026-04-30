@@ -386,6 +386,43 @@ export type Database = {
           updated_at?: string
         }
       }
+      action_steps: {
+        Row: {
+          id: string
+          action_id: string
+          title: string
+          description: string | null
+          status: ActionStatus
+          due_date: string | null
+          completion_date: string | null
+          sort_order: number | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          action_id: string
+          title: string
+          description?: string | null
+          status?: ActionStatus
+          due_date?: string | null
+          completion_date?: string | null
+          sort_order?: number | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          title?: string
+          description?: string | null
+          status?: ActionStatus
+          due_date?: string | null
+          completion_date?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+      }
       document_folders: {
         Row: {
           id: string
@@ -899,6 +936,7 @@ export type Profile         = Tables<'profiles'>
 export type Client          = Tables<'clients'>
 export type Project         = Tables<'projects'>
 export type Action          = Tables<'actions'>
+export type ActionStep      = Tables<'action_steps'>
 export type Meeting         = Tables<'meetings'>
 export type Document        = Tables<'documents'>
 export type DocumentFolder  = Tables<'document_folders'>

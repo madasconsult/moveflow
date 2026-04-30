@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CheckSquare, Plus, Rows4, Workflow } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { calculateActionStepProgress } from '@/lib/action-steps'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import {
@@ -11,7 +12,7 @@ import {
   ACTION_STATUS_LABELS,
   formatDate,
 } from '@/lib/utils'
-import type { Action, Project, Profile } from '@/types/database.types'
+import type { Action, ActionStep, Project, Profile } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Ações' }
 
@@ -32,6 +33,7 @@ type ActionListItem = Pick<
 
 type ProjectLookup = Pick<Project, 'id' | 'project_name'>
 type ProfileLookup = Pick<Profile, 'id' | 'full_name'>
+type StepLookup = Pick<ActionStep, 'action_id' | 'status'>
 
 interface ActionsPageProps {
   searchParams?: {
@@ -88,13 +90,16 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
     new Set(actions.map(action => action.assigned_to).filter(Boolean) as string[])
   )
 
-  const [projectsRes, responsiblesRes] = await Promise.all([
+  const [projectsRes, responsiblesRes, stepsRes] = await Promise.all([
     projectIds.length > 0
       ? supabase.from('projects').select('id, project_name').in('id', projectIds)
       : Promise.resolve({ data: [] as ProjectLookup[] | null }),
     responsibleIds.length > 0
       ? supabase.from('profiles').select('id, full_name').in('id', responsibleIds)
       : Promise.resolve({ data: [] as ProfileLookup[] | null }),
+    actions.length > 0
+      ? supabase.from('action_steps').select('action_id, status').in('action_id', actions.map(action => action.id))
+      : Promise.resolve({ data: [] as StepLookup[] | null }),
   ])
 
   const projectMap = new Map(
@@ -103,6 +108,10 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
   const responsibleMap = new Map(
     (((responsiblesRes.data as ProfileLookup[] | null) ?? [])).map(profile => [profile.id, profile.full_name])
   )
+  const stepsByAction = new Map<string, StepLookup[]>()
+  ;(((stepsRes.data as StepLookup[] | null) ?? [])).forEach(step => {
+    stepsByAction.set(step.action_id, [...(stepsByAction.get(step.action_id) ?? []), step])
+  })
 
   const pipelineColumns = PIPELINE_ORDER.map(status => ({
     status,
@@ -197,6 +206,23 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
                           {action.due_date ? formatDate(action.due_date) : 'Sem prazo'}
                         </span>
                       </div>
+                      {(() => {
+                        const progress = calculateActionStepProgress(stepsByAction.get(action.id) ?? [])
+                        return (
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                              <span>{progress.completed}/{progress.total} etapas</span>
+                              <span>{progress.percentage}%</span>
+                            </div>
+                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                              <div
+                                className="h-full rounded-full bg-brand-600"
+                                style={{ width: `${progress.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </Link>
                   ))
                 )}
@@ -218,6 +244,7 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
                   <th className="px-5 py-3">Prioridade</th>
                   <th className="px-5 py-3">Prazo</th>
                   <th className="px-5 py-3">Conclusão</th>
+                  <th className="px-5 py-3">Etapas</th>
                   <th className="px-5 py-3 text-right">Ações</th>
                 </tr>
               </thead>
@@ -261,6 +288,25 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
                     </td>
                     <td className="px-5 py-4 text-neutral-600">
                       {formatDate(action.completion_date)}
+                    </td>
+                    <td className="px-5 py-4 text-neutral-600">
+                      {(() => {
+                        const progress = calculateActionStepProgress(stepsByAction.get(action.id) ?? [])
+                        return (
+                          <div className="min-w-[140px]">
+                            <div className="flex items-center justify-between text-xs">
+                              <span>{progress.completed}/{progress.total} etapas</span>
+                              <span>{progress.percentage}%</span>
+                            </div>
+                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                              <div
+                                className="h-full rounded-full bg-brand-600"
+                                style={{ width: `${progress.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-2">

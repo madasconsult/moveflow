@@ -4,15 +4,20 @@ import { useState } from 'react'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 
 interface MarkActionCompletedButtonProps {
   actionId: string
   isCompleted: boolean
+  containerClassName?: string
+  buttonClassName?: string
 }
 
 export function MarkActionCompletedButton({
   actionId,
   isCompleted,
+  containerClassName,
+  buttonClassName,
 }: MarkActionCompletedButtonProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -53,7 +58,7 @@ export function MarkActionCompletedButton({
   }
 
   return (
-    <div className="space-y-3">
+    <div className={cn('space-y-3', containerClassName)}>
       {success && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {success}
@@ -68,7 +73,7 @@ export function MarkActionCompletedButton({
         type="button"
         onClick={handleMarkCompleted}
         disabled={saving || isCompleted}
-        className="btn-primary w-full justify-center disabled:opacity-60"
+        className={cn('btn-primary w-full justify-center disabled:opacity-60', buttonClassName)}
       >
         {saving ? (
           <>
