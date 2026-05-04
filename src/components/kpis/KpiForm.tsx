@@ -48,12 +48,17 @@ interface KpiFormProps {
   >
   diagnosisFeatureEnabled?: boolean
   canChooseProject: boolean
+  canEditUnitOfMeasure?: boolean
 }
 
 interface FormErrors {
   project_id?: string
   kpi_name?: string
   diagnosis_indicator_id?: string
+}
+
+type KpiUpdatePayload = UpdateDto<'kpis'> & {
+  unit_of_measure?: string | null
 }
 
 export function KpiForm({
@@ -64,6 +69,7 @@ export function KpiForm({
   diagnosisIndicators,
   diagnosisFeatureEnabled = true,
   canChooseProject,
+  canEditUnitOfMeasure = false,
 }: KpiFormProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -160,7 +166,7 @@ export function KpiForm({
     const diagnosisIndicatorValue =
       diagnosisFeatureEnabled && originType === 'diagnostic' ? diagnosisIndicatorId || null : null
 
-    const updatePayload: UpdateDto<'kpis'> = {
+    const updatePayload: KpiUpdatePayload = {
       kpi_name: kpiNameValue,
       current_value: currentValueParsed,
       target_value: targetValueParsed,
@@ -168,6 +174,10 @@ export function KpiForm({
       status,
       trend: trendValue,
       visible_to_client: visibleToClient,
+    }
+
+    if (canEditUnitOfMeasure) {
+      updatePayload.unit_of_measure = unitOfMeasureValue
     }
 
     if (diagnosisFeatureEnabled) {
@@ -388,8 +398,13 @@ export function KpiForm({
             onChange={event => setUnitOfMeasure(event.target.value)}
             className="input"
             placeholder="Ex.: %, dias, pedidos"
-            disabled={saving || mode === 'edit'}
+            disabled={saving || (mode === 'edit' && !canEditUnitOfMeasure)}
           />
+          {mode === 'edit' && !canEditUnitOfMeasure && (
+            <p className="mt-1 text-xs text-neutral-500">
+              Apenas administradores FAUS podem corrigir a unidade de medida após a criação.
+            </p>
+          )}
         </div>
 
         <div>
@@ -559,7 +574,7 @@ export function KpiForm({
 
       {mode === 'edit' && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Na edição, este schema atual permite atualizar nome, valor atual, meta, status, tendência e visibilidade. Projeto, unidade, frequência, responsável e notas permanecem somente para leitura.
+          Na edição, este schema atual permite atualizar nome, valor atual, meta, status, tendência e visibilidade. Projeto, frequência, responsável e notas permanecem somente para leitura. A unidade de medida pode ser corrigida apenas por administradores FAUS.
         </div>
       )}
 

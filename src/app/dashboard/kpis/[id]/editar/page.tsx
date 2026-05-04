@@ -92,6 +92,7 @@ export default async function EditKpiPage({ params }: PageProps) {
         diagnosisIndicators={diagnosisIndicators}
         diagnosisFeatureEnabled={diagnosisFeatureEnabled}
         canChooseProject={isAdmin}
+        canEditUnitOfMeasure={isAdmin}
       />
     </div>
   )
