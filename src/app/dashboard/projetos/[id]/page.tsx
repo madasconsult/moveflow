@@ -1,21 +1,20 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AlertTriangle, BarChart3, Building2, CheckSquare, ClipboardList, Clock3, Pencil, UserCircle2 } from 'lucide-react'
+import { ArrowUpRight, BarChart3, Building2, CheckSquare, ClipboardList, Pencil, UserCircle2 } from 'lucide-react'
 import { notFound, redirect } from 'next/navigation'
+import { RateAxisLineChart } from '@/components/diagnosis/RateAxisLineChart'
+import { RateGauge } from '@/components/diagnosis/RateGauge'
+import { RateRadarChart } from '@/components/diagnosis/RateRadarChart'
+import { ProjectKpiExecutiveCard } from '@/components/projects/ProjectKpiExecutiveCard'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import {
-  ACTION_PRIORITY_LABELS,
-  ACTION_STATUS_COLORS,
-  ACTION_STATUS_LABELS,
   DIAGNOSIS_STATUS_COLORS,
   DIAGNOSIS_STATUS_LABELS,
   KPI_MONTH_OPTIONS,
   KPI_ORIGIN_TYPE_LABELS,
   KPI_STATUS_COLORS,
   KPI_STATUS_LABELS,
-  PERFORMANCE_STATUS_COLORS,
-  PERFORMANCE_STATUS_LABELS,
   PROJECT_PHASE_LABELS,
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
@@ -25,12 +24,12 @@ import {
   getYearFromDate,
   cn,
   formatDate,
-  formatMeasurementValue,
 } from '@/lib/utils'
 import {
+  buildRateAxisCriterionSeries,
   calculateRateAxisScores,
-  formatRateScore,
   getRateProfileTemplate,
+  type RateAxisScore,
 } from '@/lib/rate-faus'
 import type {
   Action,
@@ -306,6 +305,13 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
       return [version.id, new Map(axisScores.map(axis => [axis.axis, axis]))]
     })
   )
+  const latestRateVersion = rateVersions[rateVersions.length - 1] ?? null
+  const latestRateAxisScores: RateAxisScore[] = latestRateVersion
+    ? orderedAxisNames
+        .map(axis => rateAxisByVersion.get(latestRateVersion.id)?.get(axis))
+        .filter((axis): axis is RateAxisScore => Boolean(axis))
+    : []
+  const rateAxisCriterionSeries = buildRateAxisCriterionSeries(rateVersions, rateItems)
 
   return (
     <div className="space-y-6">
@@ -517,169 +523,11 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
             </div>
 
             <div className="rounded-2xl border border-neutral-200">
-              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
-                <h3 className="text-sm font-semibold text-neutral-900">KPIs do projeto</h3>
-                <span className="text-xs text-neutral-400">{kpiRows.length} cadastrados</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                    <tr>
-                      <th className="px-4 py-3">KPI</th>
-                      <th className="px-4 py-3">Origem / baseline</th>
-                      <th className="px-4 py-3">Meta atual</th>
-                      <th className="px-4 py-3">Realizado</th>
-                      <th className="px-4 py-3">Farol</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100 bg-white">
-                    {kpiRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-6 text-center text-sm text-neutral-500">
-                          Nenhum KPI cadastrado para este projeto.
-                        </td>
-                      </tr>
-                    ) : (
-                      kpiRows.map(row => (
-                        <tr key={row.id} className="transition-colors hover:bg-neutral-50">
-                          <td className="px-4 py-3">
-                            <Link href={`/dashboard/kpis/${row.id}`} className="font-medium text-neutral-900 hover:text-brand-700">
-                              {row.kpi_name}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3 text-neutral-700">
-                            <div>{KPI_ORIGIN_TYPE_LABELS[row.origin_type]}</div>
-                            {row.diagnosisIndicator && (
-                              <div className="mt-1 text-xs text-neutral-400">
-                                {formatMeasurementValue(row.diagnosisIndicator.baseline_value, row.diagnosisIndicator.unit_of_measure)}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-neutral-700">
-                            {row.currentPeriod
-                              ? formatMeasurementValue(row.currentPeriod.planned_target, row.unit_of_measure)
-                              : '—'}
-                          </td>
-                          <td className="px-4 py-3 text-neutral-700">
-                            {row.currentRecord
-                              ? formatMeasurementValue(row.currentRecord.actual_value, row.unit_of_measure)
-                              : '—'}
-                          </td>
-                          <td className="px-4 py-3">
-                            {row.currentRecord ? (
-                              <span className={cn('badge', PERFORMANCE_STATUS_COLORS[row.currentRecord.calculated_status])}>
-                                {PERFORMANCE_STATUS_LABELS[row.currentRecord.calculated_status]}
-                              </span>
-                            ) : (
-                              <span className="text-neutral-400">Sem apuração</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={cn('badge', KPI_STATUS_COLORS[row.status])}>
-                              {KPI_STATUS_LABELS[row.status]}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-neutral-200">
-              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-neutral-900">Rate FAUS</h3>
-                  <p className="mt-1 text-xs text-neutral-400">Resumo consolidado por versão e comparativo por eixo.</p>
-                </div>
-                <Link href={`/dashboard/projetos/${project.id}/diagnostico/rate`} className="text-sm font-medium text-brand-600 hover:text-brand-700">
-                  Abrir Rate completo
-                </Link>
-              </div>
-
-              {rateAssessment && rateVersions.length > 0 ? (
-                <div className="space-y-5 p-4">
-                  <div className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Rate Total atual</p>
-                    <p className="mt-3 text-3xl font-semibold text-brand-900">
-                      {formatRateScore(rateVersions[rateVersions.length - 1]?.overall_score ?? null)}
-                      <span className="text-base font-medium text-brand-700"> / 5,0</span>
-                    </p>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-2xl border border-neutral-200">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                        <tr>
-                          <th className="px-4 py-3">Versão</th>
-                          <th className="px-4 py-3">Nome</th>
-                          <th className="px-4 py-3">Data</th>
-                          <th className="px-4 py-3">Score geral</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-100 bg-white">
-                        {rateVersions.map(version => (
-                          <tr key={version.id} className="transition-colors hover:bg-neutral-50">
-                            <td className="px-4 py-3">
-                              <Link href={`/dashboard/projetos/${project.id}/diagnostico/rate?version=${version.id}`} className="font-medium text-neutral-900 hover:text-brand-700">
-                                v{version.version_number}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-neutral-700">{version.version_name}</td>
-                            <td className="px-4 py-3 text-neutral-700">{formatDate(version.assessment_date)}</td>
-                            <td className="px-4 py-3 text-neutral-700">{formatRateScore(version.overall_score)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-2xl border border-neutral-200">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                        <tr>
-                          <th className="px-4 py-3">Eixo</th>
-                          {rateVersions.map(version => (
-                            <th key={version.id} className="px-4 py-3">
-                              v{version.version_number}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-100 bg-white">
-                        {orderedAxisNames.map(axis => (
-                          <tr key={axis} className="transition-colors hover:bg-neutral-50">
-                            <td className="px-4 py-3">
-                              <Link href={`/dashboard/projetos/${project.id}/diagnostico/rate`} className="font-medium text-neutral-900 hover:text-brand-700">
-                                {axis}
-                              </Link>
-                            </td>
-                            {rateVersions.map(version => (
-                              <td key={`${axis}-${version.id}`} className="px-4 py-3 text-neutral-700">
-                                {formatRateScore(rateAxisByVersion.get(version.id)?.get(axis)?.score ?? null)}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="px-4 py-6 text-sm text-neutral-500">
-                  Nenhum Rate FAUS ativo para este diagnóstico.
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-neutral-200">
               <div className="flex flex-col gap-3 border-b border-neutral-200 px-4 py-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-neutral-900">Performance mensal dos KPIs</h3>
+                  <h3 className="text-sm font-semibold text-neutral-900">KPIs do projeto</h3>
                   <p className="mt-1 text-xs text-neutral-400">
-                    Todos os KPIs vinculados ao projeto, com referência, meta, apuração e atalho para FSP por mês.
+                    Leitura gráfica executiva dos indicadores no ano selecionado.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -703,136 +551,87 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   Nenhum KPI cadastrado para este projeto.
                 </div>
               ) : (
-                <div className="space-y-6 p-4">
-                  {kpiRows.map(row => {
-                    const referenceValue = row.diagnosisIndicator
-                      ? formatMeasurementValue(
-                          row.diagnosisIndicator.baseline_value,
-                          row.diagnosisIndicator.unit_of_measure ?? row.unit_of_measure
-                        )
-                      : '—'
+                <div className="grid gap-4 p-4 xl:grid-cols-2">
+                  {kpiRows.map(row => (
+                    <ProjectKpiExecutiveCard
+                      key={row.id}
+                      href={`/dashboard/kpis/${row.id}`}
+                      name={row.kpi_name}
+                      originLabel={KPI_ORIGIN_TYPE_LABELS[row.origin_type]}
+                      statusLabel={KPI_STATUS_LABELS[row.status]}
+                      statusClassName={KPI_STATUS_COLORS[row.status]}
+                      referenceValue={row.diagnosisIndicator?.baseline_value ?? null}
+                      referenceUnit={row.diagnosisIndicator?.unit_of_measure ?? row.unit_of_measure}
+                      unit={row.unit_of_measure}
+                      points={row.monthRows.map(({ month, period, record }) => ({
+                        label: getMonthPeriodLabel(selectedYear, month.index),
+                        target: period?.planned_target ?? null,
+                        actual: record?.actual_value ?? null,
+                      }))}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
-                    return (
-                      <div key={row.id} className="overflow-x-auto rounded-2xl border border-neutral-200">
-                        <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-                          <div>
-                            <Link href={`/dashboard/kpis/${row.id}`} className="text-sm font-semibold text-neutral-900 hover:text-brand-700">
-                              {row.kpi_name}
-                            </Link>
-                            <p className="mt-1 text-xs text-neutral-400">
-                              {KPI_ORIGIN_TYPE_LABELS[row.origin_type]} · {row.visible_to_client ? 'Visível ao cliente' : 'Uso interno'}
-                            </p>
-                          </div>
-                          <span className={cn('badge', KPI_STATUS_COLORS[row.status])}>
-                            {KPI_STATUS_LABELS[row.status]}
-                          </span>
-                        </div>
+            <div className="rounded-2xl border border-neutral-200">
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-neutral-900">Rate FAUS</h3>
+                  <p className="mt-1 text-xs text-neutral-400">
+                    Gráficos clicáveis para leitura executiva do Rate e suas aberturas por eixo.
+                  </p>
+                </div>
+                <Link href={`/dashboard/projetos/${project.id}/diagnostico/rate`} className="text-sm font-medium text-brand-600 hover:text-brand-700">
+                  Abrir Rate completo
+                </Link>
+              </div>
 
-                        <table className="min-w-[1200px] w-full text-sm">
-                          <thead className="bg-white text-left text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                            <tr>
-                              <th className="px-4 py-3">Série</th>
-                              <th className="px-4 py-3">Valor de referência</th>
-                              {KPI_MONTH_OPTIONS.map(month => (
-                                <th key={`${row.id}-${month.index}`} className="px-3 py-3 text-center">
-                                  {getMonthPeriodLabel(selectedYear, month.index)}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-neutral-100 bg-white">
-                            <tr>
-                              <td className="px-4 py-4 font-semibold text-neutral-900">Referência / Diagnóstico</td>
-                              <td className="px-4 py-4 text-sm font-medium text-neutral-800">{referenceValue}</td>
-                              {KPI_MONTH_OPTIONS.map(month => (
-                                <td key={`reference-${row.id}-${month.index}`} className="px-3 py-4 text-center text-neutral-300">
-                                  —
-                                </td>
-                              ))}
-                            </tr>
+              {rateAssessment && rateVersions.length > 0 && latestRateVersion ? (
+                <div className="space-y-5 p-4">
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <Link
+                      href={`/dashboard/projetos/${project.id}/graficos/rate/geral`}
+                      className="group block rounded-[28px] transition hover:-translate-y-0.5 hover:shadow-lg"
+                    >
+                      <RateGauge score={latestRateVersion.overall_score} />
+                      <span className="mt-2 inline-flex items-center gap-1 px-2 text-xs font-medium text-brand-700">
+                        Ver detalhe do Rate Geral
+                        <ArrowUpRight size={13} />
+                      </span>
+                    </Link>
 
-                            <tr>
-                              <td className="px-4 py-4 font-semibold text-neutral-900">Meta</td>
-                              <td className="px-4 py-4 text-neutral-300">—</td>
-                              {row.monthRows.map(({ month, period }) => (
-                                <td key={`target-${row.id}-${month.index}`} className="px-3 py-4 text-center">
-                                  {period ? (
-                                    <span className="font-medium text-neutral-900">
-                                      {formatMeasurementValue(period.planned_target, row.unit_of_measure)}
-                                    </span>
-                                  ) : (
-                                    <span className="text-neutral-300">—</span>
-                                  )}
-                                </td>
-                              ))}
-                            </tr>
+                    <Link
+                      href={`/dashboard/projetos/${project.id}/graficos/rate/eixos`}
+                      className="group block rounded-[28px] transition hover:-translate-y-0.5 hover:shadow-lg"
+                    >
+                      <RateRadarChart axes={latestRateAxisScores} compact />
+                      <span className="mt-2 inline-flex items-center gap-1 px-2 text-xs font-medium text-brand-700">
+                        Ver detalhe do Radar por Eixo
+                        <ArrowUpRight size={13} />
+                      </span>
+                    </Link>
+                  </div>
 
-                            <tr>
-                              <td className="px-4 py-4 font-semibold text-neutral-900">Realizado / Apuração</td>
-                              <td className="px-4 py-4 text-neutral-300">—</td>
-                              {row.monthRows.map(({ month, period, record, linkedFsp }) => {
-                                const actionHref = !period
-                                  ? null
-                                  : record
-                                    ? linkedFsp
-                                      ? `/dashboard/fsps/${linkedFsp.id}`
-                                      : `/dashboard/fsps/novo?sourceType=kpi_period&recordId=${record.id}`
-                                    : `/dashboard/kpis/periodos/${period.id}/apuracao`
-
-                                const actionLabel = !period
-                                  ? null
-                                  : record
-                                    ? 'Abrir FSP'
-                                    : 'Apurar'
-
-                                return (
-                                  <td key={`actual-${row.id}-${month.index}`} className="px-2 py-3 text-center align-top">
-                                    {period ? (
-                                      <div
-                                        className={cn(
-                                          'rounded-2xl border px-3 py-3',
-                                          record
-                                            ? {
-                                                green: 'border-green-200 bg-green-50/70',
-                                                yellow: 'border-amber-200 bg-amber-50/80',
-                                                red: 'border-red-200 bg-red-50/75',
-                                              }[record.calculated_status]
-                                            : 'border-neutral-200 bg-neutral-50'
-                                        )}
-                                      >
-                                        <p className="font-medium text-neutral-900">
-                                          {record
-                                            ? formatMeasurementValue(record.actual_value, row.unit_of_measure)
-                                            : '—'}
-                                        </p>
-                                        <div className="mt-1 space-y-1">
-                                          <p className="text-[11px] text-neutral-500">
-                                            {record
-                                              ? PERFORMANCE_STATUS_LABELS[record.calculated_status]
-                                              : 'Sem apuração'}
-                                          </p>
-                                          {actionHref && actionLabel && (
-                                            <Link
-                                              href={actionHref}
-                                              className="inline-block text-[11px] font-medium text-brand-700 hover:text-brand-800"
-                                            >
-                                              {actionLabel}
-                                            </Link>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span className="text-neutral-300">—</span>
-                                    )}
-                                  </td>
-                                )
-                              })}
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    )
-                  })}
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {rateAxisCriterionSeries.map(axisSeries => (
+                      <Link
+                        key={axisSeries.axis}
+                        href={`/dashboard/projetos/${project.id}/graficos/rate/eixos/${encodeURIComponent(axisSeries.axis)}`}
+                        className="group block rounded-[28px] transition hover:-translate-y-0.5 hover:shadow-lg"
+                      >
+                        <RateAxisLineChart series={axisSeries} compact />
+                        <span className="mt-2 inline-flex items-center gap-1 px-2 text-xs font-medium text-brand-700">
+                          Detalhar {axisSeries.axis}
+                          <ArrowUpRight size={13} />
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="px-4 py-6 text-sm text-neutral-500">
+                  Nenhum Rate FAUS ativo para este diagnóstico.
                 </div>
               )}
             </div>

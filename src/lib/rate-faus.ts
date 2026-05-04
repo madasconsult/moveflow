@@ -44,6 +44,23 @@ export interface RateVersionSeriesPoint {
   overallScore: number | null
 }
 
+export interface RateAxisCriterionVersion {
+  versionId: string
+  versionNumber: number
+  versionName: string
+  assessmentDate: string
+  values: {
+    criterion: string
+    score: number | null
+  }[]
+}
+
+export interface RateAxisCriterionSeries {
+  axis: string
+  criteria: string[]
+  versions: RateAxisCriterionVersion[]
+}
+
 export interface RateScoreOption {
   value: RateScoreValue
   shortLabel: string
@@ -233,4 +250,47 @@ export function buildRateVersionSeries(
       assessmentDate: version.assessment_date,
       overallScore: version.overall_score,
     }))
+}
+
+export function buildRateAxisCriterionSeries(
+  versions: Pick<
+    RateAssessmentVersion,
+    'id' | 'version_number' | 'version_name' | 'assessment_date' | 'profile_type'
+  >[],
+  items: Pick<RateAssessmentItem, 'version_id' | 'axis' | 'criterion' | 'score'>[]
+): RateAxisCriterionSeries[] {
+  const orderedVersions = [...versions].sort((left, right) => left.version_number - right.version_number)
+  const primaryTemplate = orderedVersions[0]
+    ? getRateProfileTemplate(orderedVersions[0].profile_type)
+    : []
+
+  const itemsByVersion = new Map<string, Pick<RateAssessmentItem, 'version_id' | 'axis' | 'criterion' | 'score'>[]>()
+
+  items.forEach(item => {
+    const current = itemsByVersion.get(item.version_id) ?? []
+    current.push(item)
+    itemsByVersion.set(item.version_id, current)
+  })
+
+  return primaryTemplate.map(axisTemplate => ({
+    axis: axisTemplate.axis,
+    criteria: axisTemplate.criteria.map(criterion => criterion.criterion),
+    versions: orderedVersions.map(version => {
+      const versionItems = itemsByVersion.get(version.id) ?? []
+      const versionTemplate = getRateProfileTemplate(version.profile_type)
+      const versionAxis = versionTemplate.find(axis => axis.axis === axisTemplate.axis)
+      const criteria = versionAxis?.criteria.map(criterion => criterion.criterion) ?? axisTemplate.criteria.map(criterion => criterion.criterion)
+
+      return {
+        versionId: version.id,
+        versionNumber: version.version_number,
+        versionName: version.version_name,
+        assessmentDate: version.assessment_date,
+        values: criteria.map(criterion => ({
+          criterion,
+          score: versionItems.find(item => item.axis === axisTemplate.axis && item.criterion === criterion)?.score ?? null,
+        })),
+      }
+    }),
+  }))
 }
