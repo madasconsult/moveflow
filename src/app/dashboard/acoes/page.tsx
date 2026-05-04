@@ -43,6 +43,16 @@ type ProjectLookup = Pick<Project, 'id' | 'project_name'>
 type ProfileLookup = Pick<Profile, 'id' | 'full_name'>
 type StepLookup = Pick<ActionStep, 'action_id' | 'status'>
 
+const ACTION_PIPELINE_STATUS_LABELS = {
+  overdue_pipeline: 'Atrasadas',
+  ...ACTION_STATUS_LABELS,
+}
+
+const ACTION_PIPELINE_STATUS_COLORS = {
+  overdue_pipeline: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
+  ...ACTION_STATUS_COLORS,
+}
+
 interface ActionsPageProps {
   searchParams?: {
     view?: string
@@ -126,7 +136,7 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
 
   const pipelineColumns = groupActionsByStatus(sortActionsByDueDate(actions)).map(column => ({
     status: column.status,
-    label: ACTION_STATUS_LABELS[column.status],
+    label: ACTION_PIPELINE_STATUS_LABELS[column.status],
     actions: column.actions,
   }))
 
@@ -183,7 +193,7 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
           {pipelineColumns.map(column => (
             <div key={column.status} className="card flex w-[320px] shrink-0 flex-col p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className={`badge ${ACTION_STATUS_COLORS[column.status]}`}>
+                <span className={`badge ${ACTION_PIPELINE_STATUS_COLORS[column.status]}`}>
                   {column.label}
                 </span>
                 <span className="text-xs text-neutral-400">{column.actions.length}</span>

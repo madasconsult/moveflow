@@ -1,12 +1,14 @@
 import { calculateActionStepProgress } from '@/lib/action-steps'
 import type { ActionStatus } from '@/types/database.types'
 
-export const ACTION_PIPELINE_STATUS_ORDER: ActionStatus[] = [
+export type ActionPipelineStatus = ActionStatus | 'overdue_pipeline'
+
+export const ACTION_PIPELINE_STATUS_ORDER: ActionPipelineStatus[] = [
+  'overdue_pipeline',
   'not_started',
   'in_progress',
   'waiting_client',
   'waiting_faus',
-  'overdue',
   'completed',
   'cancelled',
 ]
@@ -60,12 +62,18 @@ export function getActionProgressPercent(
 }
 
 export function isActionOverdue(action: ActionDueDateSource, referenceDate = new Date()) {
-  if (!action.due_date || action.status === 'completed' || action.status === 'cancelled') return false
+  if (!action.due_date || action.status === 'completed' || action.completion_date || action.status === 'cancelled') return false
 
   const dueDate = parseDateOnly(action.due_date)
   if (!dueDate) return false
 
   return dueDate < startOfToday(referenceDate)
+}
+
+export function getActionPipelineStatus<T extends ActionDueDateSource>(action: T): ActionPipelineStatus {
+  if (action.completion_date || action.status === 'completed') return 'completed'
+  if (isActionOverdue(action)) return 'overdue_pipeline'
+  return action.status
 }
 
 export function sortActionsByDueDate<T extends ActionDueDateSource>(actions: T[], referenceDate = new Date()) {
@@ -84,9 +92,9 @@ export function sortActionsByDueDate<T extends ActionDueDateSource>(actions: T[]
   })
 }
 
-export function groupActionsByStatus<T extends { status: ActionStatus }>(actions: T[]) {
+export function groupActionsByStatus<T extends ActionDueDateSource>(actions: T[]) {
   return ACTION_PIPELINE_STATUS_ORDER.map(status => ({
     status,
-    actions: actions.filter(action => action.status === status),
+    actions: actions.filter(action => getActionPipelineStatus(action) === status),
   }))
 }
