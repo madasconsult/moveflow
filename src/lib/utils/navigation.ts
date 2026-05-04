@@ -41,6 +41,12 @@ export const DASHBOARD_NAV_ITEMS: NavItem[] = [
     roles: ['admin_faus', 'consultor_faus'],
   },
   {
+    label: 'Diário de Bordo',
+    href:  '/dashboard/diario-de-bordo',
+    icon:  'FileText',
+    roles: ['admin_faus', 'consultor_faus'],
+  },
+  {
     label: 'Documentos',
     href:  '/dashboard/documentos',
     icon:  'FileText',

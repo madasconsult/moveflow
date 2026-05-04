@@ -446,6 +446,60 @@ export type Database = {
           updated_at?: string
         }
       }
+      diary_entries: {
+        Row: {
+          id: string
+          project_id: string
+          title: string
+          start_date: string
+          end_date: string
+          faus_people: string[]
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          title: string
+          start_date: string
+          end_date: string
+          faus_people?: string[]
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          title?: string
+          start_date?: string
+          end_date?: string
+          faus_people?: string[]
+          updated_at?: string
+          deleted_at?: string | null
+        }
+      }
+      diary_deliverables: {
+        Row: {
+          id: string
+          diary_entry_id: string
+          description: string
+          position: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          diary_entry_id: string
+          description: string
+          position?: number
+          created_at?: string
+        }
+        Update: {
+          description?: string
+          position?: number
+        }
+      }
       meetings: {
         Row: {
           id: string
@@ -940,6 +994,8 @@ export type ActionStep      = Tables<'action_steps'>
 export type Meeting         = Tables<'meetings'>
 export type Document        = Tables<'documents'>
 export type DocumentFolder  = Tables<'document_folders'>
+export type DiaryEntry      = Tables<'diary_entries'>
+export type DiaryDeliverable = Tables<'diary_deliverables'>
 export type ProjectDiagnosis = Tables<'project_diagnoses'>
 export type DiagnosisIndicator = Tables<'diagnosis_indicators'>
 export type RateAssessment  = Tables<'rate_assessments'>
