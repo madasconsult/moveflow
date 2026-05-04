@@ -3,6 +3,12 @@ import Link from 'next/link'
 import { CheckSquare, Plus, Rows4, Workflow } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { calculateActionStepProgress } from '@/lib/action-steps'
+import {
+  getActionProgressPercent,
+  groupActionsByStatus,
+  isActionOverdue,
+  sortActionsByDueDate,
+} from '@/lib/action-pipeline'
 import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
@@ -43,16 +49,6 @@ interface ActionsPageProps {
     statusGroup?: string
   }
 }
-
-const PIPELINE_ORDER = [
-  'not_started',
-  'in_progress',
-  'waiting_client',
-  'waiting_faus',
-  'overdue',
-  'completed',
-  'cancelled',
-] as const
 
 export default async function ActionsPage({ searchParams }: ActionsPageProps) {
   const session = await getSessionWithProfile()
@@ -128,10 +124,10 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
     stepsByAction.set(step.action_id, [...(stepsByAction.get(step.action_id) ?? []), step])
   })
 
-  const pipelineColumns = PIPELINE_ORDER.map(status => ({
-    status,
-    label: ACTION_STATUS_LABELS[status],
-    actions: actions.filter(action => action.status === status),
+  const pipelineColumns = groupActionsByStatus(sortActionsByDueDate(actions)).map(column => ({
+    status: column.status,
+    label: ACTION_STATUS_LABELS[column.status],
+    actions: column.actions,
   }))
 
   return (
@@ -167,7 +163,7 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
         </div>
       </div>
 
-      {actions.length === 0 ? (
+      {actions.length === 0 && view === 'list' ? (
         <div className="card flex flex-col items-center justify-center px-6 py-16 text-center">
           <CheckSquare size={36} className="mb-4 text-neutral-300" />
           <h2 className="text-base font-semibold text-neutral-900">Nenhuma ação disponível</h2>
@@ -182,9 +178,10 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
           )}
         </div>
       ) : view === 'pipeline' ? (
-        <div className="grid gap-4 xl:grid-cols-4">
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-4">
           {pipelineColumns.map(column => (
-            <div key={column.status} className="card p-4 space-y-4">
+            <div key={column.status} className="card flex w-[320px] shrink-0 flex-col p-4">
               <div className="flex items-center justify-between gap-3">
                 <span className={`badge ${ACTION_STATUS_COLORS[column.status]}`}>
                   {column.label}
@@ -192,56 +189,79 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
                 <span className="text-xs text-neutral-400">{column.actions.length}</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="mt-4 flex-1 space-y-3">
                 {column.actions.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-neutral-200 px-4 py-6 text-center text-sm text-neutral-400">
                     Nenhuma ação nesta coluna.
                   </div>
                 ) : (
-                  column.actions.map(action => (
-                    <Link
-                      key={action.id}
-                      href={`/dashboard/acoes/${action.id}`}
-                      className="block rounded-2xl border border-neutral-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-sm"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
-                        {action.business_id ?? 'Sem ID'}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-neutral-900">{action.title}</p>
-                      <p className="mt-2 text-xs text-neutral-500">
-                        {projectMap.get(action.project_id) ?? 'Projeto vinculado'}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <span className={`badge ${ACTION_PRIORITY_COLORS[action.priority]}`}>
-                          {ACTION_PRIORITY_LABELS[action.priority]}
-                        </span>
-                        <span className="badge bg-neutral-100 text-neutral-600">
-                          {action.due_date ? formatDate(action.due_date) : 'Sem prazo'}
-                        </span>
-                      </div>
-                      {(() => {
-                        const progress = calculateActionStepProgress(stepsByAction.get(action.id) ?? [])
-                        return (
-                          <div className="mt-3">
-                            <div className="flex items-center justify-between text-[11px] text-neutral-500">
-                              <span>{progress.completed}/{progress.total} etapas</span>
-                              <span>{progress.percentage}%</span>
-                            </div>
-                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                              <div
-                                className="h-full rounded-full bg-brand-600"
-                                style={{ width: `${progress.percentage}%` }}
-                              />
-                            </div>
+                  column.actions.map(action => {
+                    const steps = stepsByAction.get(action.id) ?? []
+                    const progress = calculateActionStepProgress(steps)
+                    const progressPercentage = getActionProgressPercent(action, steps)
+                    const overdue = isActionOverdue(action)
+
+                    return (
+                      <Link
+                        key={action.id}
+                        href={`/dashboard/acoes/${action.id}`}
+                        className="block rounded-2xl border border-neutral-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
+                            {action.business_id ?? 'Sem ID'}
+                          </p>
+                          {overdue && (
+                            <span className="badge bg-red-50 text-red-700 ring-1 ring-inset ring-red-200">
+                              Atrasada
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm font-semibold leading-snug text-neutral-900">{action.title}</p>
+                        <p className="mt-2 text-xs text-neutral-500">
+                          {projectMap.get(action.project_id) ?? 'Projeto vinculado'}
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          {action.assigned_to
+                            ? responsibleMap.get(action.assigned_to) ?? 'Responsável vinculado'
+                            : 'Responsável não definido'}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className={`badge ${ACTION_STATUS_COLORS[action.status]}`}>
+                            {ACTION_STATUS_LABELS[action.status]}
+                          </span>
+                          <span className={`badge ${ACTION_PRIORITY_COLORS[action.priority]}`}>
+                            {ACTION_PRIORITY_LABELS[action.priority]}
+                          </span>
+                          <span className={`badge ${overdue ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200' : 'bg-neutral-100 text-neutral-600'}`}>
+                            {action.due_date ? formatDate(action.due_date) : 'Sem prazo'}
+                          </span>
+                        </div>
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                            <span>Andamento</span>
+                            <span>{progressPercentage}%</span>
                           </div>
-                        )
-                      })()}
-                    </Link>
-                  ))
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                            <div
+                              className="h-full rounded-full bg-brand-600"
+                              style={{ width: `${progressPercentage}%` }}
+                            />
+                          </div>
+                          <div className="mt-1 text-[11px] text-neutral-400">
+                            {progress.total > 0
+                              ? `${progress.completed}/${progress.total} etapas concluídas`
+                              : 'Sem etapas cadastradas'}
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })
                 )}
               </div>
             </div>
           ))}
+          </div>
         </div>
       ) : (
         <div className="card overflow-hidden">
