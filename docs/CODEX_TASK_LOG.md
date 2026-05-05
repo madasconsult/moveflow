@@ -125,3 +125,22 @@ Este arquivo registra tarefas relevantes executadas com apoio do Codex no projet
 - Resultado: Central de Relatórios passa a oferecer Briefing para IA exclusivo para admin_faus, sem chamada externa, sem dependência nova e sem custo de API.
 - Commit: A confirmar
 - Observações: A tentativa anterior com API externa foi descartada localmente. O briefing é gerado em Markdown para copiar/colar manualmente no ChatGPT, Claude ou ferramenta equivalente.
+
+### Tarefa 2026-05-05 - MOVE REPORT Fase 4.2: Briefing com dados consultivos
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Enriquecer o Briefing para IA com KPIs, FSPs, Diagnóstico/Rate FAUS e Diário de Bordo.
+- Branch: feature/reports-briefing-consulting-data
+- Arquivos alterados:
+  - src/app/api/reports/ai-briefing/route.ts
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth, storage ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Briefing para IA passa a carregar dados consultivos adicionais do projeto, sem alterar PDFs e sem chamada externa de IA.
+- Commit: A confirmar
+- Observações: Não houve dependência nova, integração externa, histórico, storage ou mudança nos relatórios PDF existentes.
