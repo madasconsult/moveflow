@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Download, FileText, Loader2 } from 'lucide-react'
 import type { ActiveProjectOption } from '@/lib/active-project/server'
 import type { ReportType } from '@/components/reports/pdf/types'
+import { CONSULTANT_COMMENT_MAX_LENGTH } from '@/components/reports/pdf/utils'
 
 interface ReportCenterClientProps {
   activeProject: ActiveProjectOption
@@ -62,6 +63,7 @@ function getDefaultEndDate() {
 export function ReportCenterClient({ activeProject }: ReportCenterClientProps) {
   const [startDate, setStartDate] = useState(getDefaultStartDate)
   const [endDate, setEndDate] = useState(getDefaultEndDate)
+  const [consultantComment, setConsultantComment] = useState('')
   const [loadingType, setLoadingType] = useState<ReportType | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -77,12 +79,18 @@ export function ReportCenterClient({ activeProject }: ReportCenterClientProps) {
 
     setLoadingType(reportType)
     try {
-      const params = new URLSearchParams({
-        projectId: activeProject.id,
-        startDate,
-        endDate,
+      const response = await fetch(`/api/reports/${reportType}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: activeProject.id,
+          startDate,
+          endDate,
+          consultantComment,
+        }),
       })
-      const response = await fetch(`/api/reports/${reportType}?${params.toString()}`)
 
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => null)
@@ -162,6 +170,28 @@ export function ReportCenterClient({ activeProject }: ReportCenterClientProps) {
                 className="input"
               />
             </div>
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-100 px-5 pb-5">
+          <label htmlFor="consultant-comment" className="label">
+            Comentário Consultivo
+          </label>
+          <textarea
+            id="consultant-comment"
+            value={consultantComment}
+            onChange={event => setConsultantComment(event.target.value.slice(0, CONSULTANT_COMMENT_MAX_LENGTH))}
+            maxLength={CONSULTANT_COMMENT_MAX_LENGTH}
+            className="input min-h-32 resize-y"
+            placeholder="Inclua uma leitura consultiva sobre o período, acontecimentos relevantes, decisões, riscos ou próximos passos."
+          />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+            <p>
+              Campo opcional. O texto preenchido será incluído nos PDFs gerados.
+            </p>
+            <p>
+              {consultantComment.length}/{CONSULTANT_COMMENT_MAX_LENGTH} caracteres
+            </p>
           </div>
         </div>
 

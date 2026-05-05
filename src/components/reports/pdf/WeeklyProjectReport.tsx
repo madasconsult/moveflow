@@ -1,5 +1,5 @@
 import { Document, Text, View } from '@react-pdf/renderer'
-import { ReportCover, ReportPage, Section, EmptyState } from '@/components/reports/pdf/ReportLayout'
+import { ConsultativeAnalysis, ReportCover, ReportPage, Section, EmptyState } from '@/components/reports/pdf/ReportLayout'
 import { reportStyles } from '@/components/reports/pdf/ReportTheme'
 import {
   formatReportDate,
@@ -34,6 +34,7 @@ export function WeeklyProjectReport({ data }: { data: ReportData }) {
         data={data}
       />
       <ReportPage title="Relatório Semanal" data={data}>
+        <ConsultativeAnalysis comment={data.consultantComment} />
         <ActionList title="Ações concluídas no período" actions={completed} />
         <ActionList title="Ações criadas no período" actions={created} />
         <ActionList title="Ações vencidas no período" actions={overdue} />

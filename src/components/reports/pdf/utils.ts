@@ -1,6 +1,21 @@
 import { ACTION_STATUS_LABELS, MEETING_TYPE_LABELS } from '@/lib/utils'
 import type { ReportAction, ReportData } from '@/components/reports/pdf/types'
 
+export const CONSULTANT_COMMENT_MAX_LENGTH = 1800
+
+export function sanitizeConsultantComment(value: unknown) {
+  if (typeof value !== 'string') return null
+
+  const normalized = value
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim()
+
+  if (!normalized) return null
+
+  return normalized.slice(0, CONSULTANT_COMMENT_MAX_LENGTH)
+}
+
 export function formatReportDate(value: string | null | undefined) {
   if (!value) return '—'
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value))
