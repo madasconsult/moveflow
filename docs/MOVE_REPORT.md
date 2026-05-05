@@ -72,6 +72,25 @@ Entrega:
 - Sem chamada para IA externa.
 - Sem alteração de PDFs, banco, RLS, auth, storage, assets ou dependências.
 
+### Fase 4.3 - Relatório Executivo com dados consultivos adicionais
+
+Evolução incremental exclusiva do `Relatório Executivo do Projeto`.
+
+Entrega:
+
+- Inclusão da seção `Indicadores de Performance`.
+- Inclusão da seção `FSPs e Pontos de Atenção`.
+- Inclusão da seção `Diagnóstico e Rate FAUS`.
+- Inclusão da seção `Diário de Bordo e Entregas`.
+- Inclusão do `Painel Executivo do Projeto` no início do PDF.
+- Inclusão de resumos visuais compatíveis com PDF para KPIs e Rate FAUS.
+- Uso resumido de KPIs, FSPs, Diagnóstico/Rate FAUS e Diário de Bordo em formato executivo.
+- Limitação de listas longas para preservar legibilidade e evitar PDFs densos.
+- Status visual de ações atrasadas calculado por prazo vencido e ausência de conclusão, sem alterar o status gravado no banco.
+- Relatório Semanal e Relatório de Ações não foram enriquecidos nesta fase.
+- Briefing para IA não foi alterado nesta fase.
+- Sem alteração de banco, RLS, auth, storage, assets, dependências ou IA integrada.
+
 ## 3. Tipos de relatório disponíveis
 
 ### Relatório Executivo do Projeto
@@ -83,9 +102,13 @@ Apresentar uma visão gerencial consolidada do projeto, com foco em andamento, a
 Principais seções:
 
 - Capa institucional.
-- Resumo do projeto.
+- Painel Executivo do Projeto.
+- Visão Geral de Ações.
+- Indicadores de Performance.
+- Diagnóstico e Rate FAUS.
+- Diário de Bordo e Entregas.
+- FSPs e Pontos de Atenção.
 - Análise Consultiva do Período, quando preenchida.
-- Indicadores principais da carteira de ações.
 - Principais ações concluídas.
 - Principais ações em andamento.
 - Principais ações atrasadas.
@@ -246,6 +269,29 @@ Dados consultivos adicionais da Fase 4.2:
 - FSPs: `fsps`.
 - Diagnóstico/Rate FAUS: `project_diagnoses`, `rate_assessments`, `rate_assessment_versions`, `rate_assessment_items`.
 - Diário de Bordo: `diary_entries`, `diary_deliverables`.
+
+Dados consultivos adicionais da Fase 4.3 no Relatório Executivo:
+
+- KPIs: total do projeto, KPIs com apuração no período, KPIs fora da meta, KPIs sem apuração e até 5 KPIs relevantes.
+- FSPs: totais relevantes, abertas no período, concluídas no período, ainda abertas e até 5 FSPs principais.
+- Diagnóstico/Rate FAUS: diagnóstico mais recente/ativo, resumo, achados, hipóteses, último Rate, evolução e até 5 eixos críticos.
+- Diário de Bordo: total de registros no período, total de entregáveis e até 5 registros recentes com entregáveis principais.
+
+Regras visuais da Fase 4.3:
+
+- No Relatório Executivo, uma ação é exibida como `Concluída` quando possui conclusão ou status concluído.
+- No Relatório Executivo, uma ação é exibida como `Atrasada` quando possui prazo anterior ao fim do período analisado e não possui conclusão.
+- No Relatório Executivo, uma ação não concluída e não vencida é exibida como `Em andamento`.
+- Essa regra é somente visual e não altera o status persistido em `actions`.
+- Ações atrasadas são separadas das ações em andamento nas listas executivas.
+- Próximos passos priorizam ações em andamento não vencidas, evitando duplicação confusa das ações atrasadas.
+- Por estabilidade do `@react-pdf/renderer`, os resumos visuais do Relatório Executivo usam `View` e `Text`, evitando SVG/Recharts dentro do PDF nesta fase.
+- Os gráficos/resumos seguem a lógica visual do FLOW, mas respeitam as limitações do renderer de PDF e priorizam legibilidade.
+- O Relatório Executivo pode ocupar mais páginas para preservar margem, respiro e legibilidade.
+- Os gráficos do PDF usam cálculos seguros para evitar `NaN`, `Infinity`, percentuais inválidos ou larguras negativas.
+- Quando não há dados suficientes, o relatório exibe mensagem elegante em vez de renderizar gráfico inválido.
+- Gráficos mais sofisticados podem ser avaliados em fase posterior, desde que não comprometam a estabilidade da geração server-side.
+- Listas longas são limitadas e complementadas por nota de que os demais registros estão disponíveis no MOVE FLOW.
 
 Limites de legibilidade:
 
@@ -592,6 +638,10 @@ Avaliar se faz sentido integrar IA diretamente ao MOVE FLOW, considerando custo,
 
 Implementada com inclusão de KPIs, FSPs, Diagnóstico/Rate FAUS e Diário de Bordo no briefing em Markdown, sem alterar PDFs.
 
+### Fase 4.3: Enriquecimento consultivo do Relatório Executivo PDF
+
+Implementada com inclusão resumida de KPIs, FSPs, Diagnóstico/Rate FAUS e Diário de Bordo apenas no Relatório Executivo PDF. Relatório Semanal e Relatório de Ações permanecem fora do escopo desta fase.
+
 ### Fase 5: Histórico de relatórios
 
 Registrar relatórios gerados, período, usuário, tipo e metadados relevantes.
@@ -600,6 +650,6 @@ Registrar relatórios gerados, período, usuário, tipo e metadados relevantes.
 
 Salvar PDFs em storage de forma segura, com permissões e política de retenção.
 
-### Fase 7: Inclusão de KPIs, FSPs, Rate FAUS e Diário de Bordo
+### Fase 7: Inclusão ampliada de KPIs, FSPs, Rate FAUS e Diário de Bordo
 
-Expandir os relatórios para incluir indicadores, análises de causa, evolução do Rate FAUS e registros do Diário de Bordo.
+Expandir também o Relatório Semanal, o Relatório de Ações ou relatórios específicos para incluir indicadores, análises de causa, evolução do Rate FAUS e registros do Diário de Bordo quando fizer sentido para cada formato.

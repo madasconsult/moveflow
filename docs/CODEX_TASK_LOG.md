@@ -144,3 +144,105 @@ Este arquivo registra tarefas relevantes executadas com apoio do Codex no projet
 - Resultado: Briefing para IA passa a carregar dados consultivos adicionais do projeto, sem alterar PDFs e sem chamada externa de IA.
 - Commit: A confirmar
 - Observações: Não houve dependência nova, integração externa, histórico, storage ou mudança nos relatórios PDF existentes.
+
+### Tarefa 2026-05-05 - MOVE REPORT Fase 4.3: Executivo com dados consultivos
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Enriquecer exclusivamente o Relatório Executivo PDF com KPIs, FSPs, Diagnóstico/Rate FAUS e Diário de Bordo.
+- Branch: feature/reports-executive-consulting-data
+- Arquivos alterados:
+  - src/lib/reports.ts
+  - src/components/reports/pdf/types.ts
+  - src/components/reports/pdf/ExecutiveProjectReport.tsx
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth, storage ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Relatório Executivo PDF passa a exibir seções executivas de Indicadores de Performance, FSPs e Pontos de Atenção, Diagnóstico e Rate FAUS, e Diário de Bordo e Entregas.
+- Commit: A confirmar
+- Observações: Relatório Semanal, Relatório de Ações, Briefing para IA, assets, dependências e integração externa de IA ficaram fora do escopo.
+
+### Tarefa 2026-05-05 - MOVE REPORT Fase 4.3: Refinamento executivo visual
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Refinar o Relatório Executivo PDF antes do commit, com painel inicial, status visual correto para ações atrasadas e resumos visuais de KPIs e Rate FAUS.
+- Branch: feature/reports-executive-consulting-data
+- Arquivos alterados:
+  - src/components/reports/pdf/utils.ts
+  - src/components/reports/pdf/ExecutiveProjectReport.tsx
+  - src/components/reports/pdf/types.ts
+  - src/lib/reports.ts
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth, storage ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Relatório Executivo PDF passa a iniciar com leitura numérica e visual, incluindo Painel Executivo do Projeto, distribuição visual de ações, resumos visuais de KPIs e medidor/barras de Rate FAUS.
+- Commit: A confirmar
+- Observações: Não houve alteração em Relatório Semanal, Relatório de Ações, Briefing para IA, assets, package.json/package-lock.json, dependências ou IA integrada.
+
+### Tarefa 2026-05-05 - MOVE REPORT Fase 4.3: Correção de layout e listas executivas
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Corrigir truncamento visual, evitar duplicidade confusa de ações atrasadas e fortalecer gráficos compatíveis com PDF no Relatório Executivo.
+- Branch: feature/reports-executive-consulting-data
+- Arquivos alterados:
+  - src/components/reports/pdf/utils.ts
+  - src/components/reports/pdf/ExecutiveProjectReport.tsx
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth, storage ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Relatório Executivo passou a separar ações concluídas, em andamento e atrasadas por status visual de relatório, distribuir conteúdo em mais páginas e usar gráficos com `Svg`/`Rect` do `@react-pdf/renderer`.
+- Commit: A confirmar
+- Observações: Relatório Semanal, Relatório de Ações, Briefing para IA, package.json/package-lock.json, assets, banco, RLS, auth, storage e IA integrada ficaram fora do escopo.
+
+### Tarefa 2026-05-05 - MOVE REPORT Fase 4.3: Correção de Infinity nos gráficos PDF
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Corrigir erro `unsupported number: Infinity` nos gráficos SVG do Relatório Executivo PDF.
+- Branch: feature/reports-executive-consulting-data
+- Arquivos alterados:
+  - src/components/reports/pdf/utils.ts
+  - src/components/reports/pdf/ExecutiveProjectReport.tsx
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth, storage ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Cálculos de percentuais, larguras de barras e score Rate FAUS passaram a usar helpers seguros contra `NaN`, `Infinity`, valores nulos e divisão por zero.
+- Commit: A confirmar
+- Observações: Relatório Semanal, Relatório de Ações, Briefing para IA, assets, package.json/package-lock.json, dependências e IA integrada ficaram fora do escopo.
+
+### Tarefa 2026-05-05 - MOVE REPORT Fase 4.3: Remoção de SVG do Executivo
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Substituir os gráficos SVG do Relatório Executivo PDF por barras visuais baseadas em `View` e `Text`.
+- Branch: feature/reports-executive-consulting-data
+- Arquivos alterados:
+  - src/components/reports/pdf/ExecutiveProjectReport.tsx
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth, storage ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Relatório Executivo PDF não usa mais `Svg`, `Rect`, `Line`, `Circle`, `Polygon` ou `Path`; os gráficos permanecem como barras/progress bars em componentes básicos do renderer.
+- Commit: A confirmar
+- Observações: Decisão tomada para eliminar a classe de erro `unsupported number: Infinity` no `renderSvg`, sem alterar Semanal, Ações, Briefing para IA, package.json/package-lock.json, assets, banco, RLS, auth, storage ou IA integrada.

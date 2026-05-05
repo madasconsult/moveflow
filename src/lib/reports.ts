@@ -1,7 +1,23 @@
 import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile } from '@/types/database.types'
-import type { ReportAction, ReportData, ReportMeeting, ReportProject, ReportType } from '@/components/reports/pdf/types'
+import type {
+  ReportAction,
+  ReportConsultingData,
+  ReportData,
+  ReportDiagnosis,
+  ReportDiaryDeliverable,
+  ReportDiaryEntry,
+  ReportFsp,
+  ReportKpi,
+  ReportKpiRecord,
+  ReportKpiTarget,
+  ReportMeeting,
+  ReportProject,
+  ReportRateItem,
+  ReportRateVersion,
+  ReportType,
+} from '@/components/reports/pdf/types'
 
 export const REPORT_TYPES: ReportType[] = ['executive', 'weekly', 'actions']
 
@@ -73,6 +89,10 @@ interface ProfileLookup {
   full_name: string
 }
 
+interface RateAssessmentLookup {
+  id: string
+}
+
 export async function loadReportData(projectId: string, startDate: string, endDate: string): Promise<ReportData | null> {
   const supabase = await createClient()
 
@@ -137,6 +157,7 @@ export async function loadReportData(projectId: string, startDate: string, endDa
         executive_summary: meeting.executive_summary,
         participants: meeting.participants,
       }))
+  const consulting = await loadReportConsultingData(projectId, startDate, endDate)
 
   return {
     generatedAt: new Date().toISOString(),
@@ -144,5 +165,127 @@ export async function loadReportData(projectId: string, startDate: string, endDa
     project,
     actions,
     meetings,
+    consulting,
   }
+}
+
+export async function loadReportConsultingData(
+  projectId: string,
+  startDate: string,
+  endDate: string
+): Promise<ReportConsultingData> {
+  const supabase = await createClient()
+
+  const [kpisRes, fspsRes, diagnosisRes, diaryEntriesRes] = await Promise.all([
+    supabase
+      .from('kpis')
+      .select('id, kpi_name, diagnosis_indicator_id, unit_of_measure, status, trend, reading_type, origin_type, target_value, current_value')
+      .eq('project_id', projectId)
+      .order('kpi_name'),
+    supabase
+      .from('fsps')
+      .select('id, title, source_type, kpi_id, kpi_period_record_id, action_id, linked_action_id, generated_action_id, problem_statement, impact, method_type, root_cause, probable_cause, recommendation, status, opened_at, closed_at')
+      .eq('project_id', projectId)
+      .order('opened_at', { ascending: false }),
+    supabase
+      .from('project_diagnoses')
+      .select('id, start_date, end_date, executive_summary, key_findings, initial_hypotheses, status')
+      .eq('project_id', projectId)
+      .maybeSingle(),
+    supabase
+      .from('diary_entries')
+      .select('id, title, start_date, end_date, faus_people')
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .lte('start_date', endDate)
+      .gte('end_date', startDate)
+      .order('start_date', { ascending: false }),
+  ])
+
+  const kpis = kpisRes.error ? [] : ((kpisRes.data as ReportKpi[] | null) ?? [])
+  const kpiIds = kpis.map(kpi => kpi.id)
+  const fsps = (fspsRes.error ? [] : ((fspsRes.data as ReportFsp[] | null) ?? [])).filter(fsp =>
+    isDateWithinPeriod(fsp.opened_at, startDate, endDate) ||
+    isDateWithinPeriod(fsp.closed_at, startDate, endDate) ||
+    fsp.status === 'aberta' ||
+    fsp.status === 'em_analise'
+  )
+  const diagnosis = diagnosisRes.error ? null : ((diagnosisRes.data as ReportDiagnosis | null) ?? null)
+  const diaryEntries = diaryEntriesRes.error ? [] : ((diaryEntriesRes.data as ReportDiaryEntry[] | null) ?? [])
+  const diaryEntryIds = diaryEntries.map(entry => entry.id)
+
+  const [targetsRes, recordsRes, rateAssessmentRes, deliverablesRes] = await Promise.all([
+    kpiIds.length > 0
+      ? supabase
+          .from('kpi_target_periods')
+          .select('id, kpi_id, period_label, start_date, end_date, planned_target')
+          .in('kpi_id', kpiIds)
+          .lte('start_date', endDate)
+          .gte('end_date', startDate)
+          .order('start_date', { ascending: true })
+      : Promise.resolve({ data: [] as ReportKpiTarget[] | null, error: null }),
+    kpiIds.length > 0
+      ? supabase
+          .from('kpi_period_records')
+          .select('id, kpi_id, target_period_id, competence, actual_value, calculated_status, justification, short_analysis, recorded_at')
+          .in('kpi_id', kpiIds)
+          .gte('recorded_at', startDate)
+          .lte('recorded_at', `${endDate}T23:59:59.999Z`)
+          .order('recorded_at', { ascending: false })
+      : Promise.resolve({ data: [] as ReportKpiRecord[] | null, error: null }),
+    diagnosis
+      ? supabase
+          .from('rate_assessments')
+          .select('id')
+          .eq('diagnosis_id', diagnosis.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null as RateAssessmentLookup | null, error: null }),
+    diaryEntryIds.length > 0
+      ? supabase
+          .from('diary_deliverables')
+          .select('diary_entry_id, description, position')
+          .in('diary_entry_id', diaryEntryIds)
+          .order('position', { ascending: true })
+      : Promise.resolve({ data: [] as ReportDiaryDeliverable[] | null, error: null }),
+  ])
+
+  const kpiTargets = targetsRes.error ? [] : ((targetsRes.data as ReportKpiTarget[] | null) ?? [])
+  const kpiRecords = recordsRes.error ? [] : ((recordsRes.data as ReportKpiRecord[] | null) ?? [])
+  const rateAssessment = rateAssessmentRes.error ? null : ((rateAssessmentRes.data as RateAssessmentLookup | null) ?? null)
+  const diaryDeliverables = deliverablesRes.error ? [] : ((deliverablesRes.data as ReportDiaryDeliverable[] | null) ?? [])
+
+  const versionsRes = rateAssessment
+    ? await supabase
+        .from('rate_assessment_versions')
+        .select('id, version_number, version_name, assessment_date, profile_type, overall_score')
+        .eq('assessment_id', rateAssessment.id)
+        .order('version_number', { ascending: false })
+    : { data: [] as ReportRateVersion[] | null, error: null }
+
+  const rateVersions = versionsRes.error ? [] : ((versionsRes.data as ReportRateVersion[] | null) ?? [])
+  const versionIds = rateVersions.map(version => version.id)
+  const itemsRes = versionIds.length > 0
+    ? await supabase
+        .from('rate_assessment_items')
+        .select('version_id, axis, criterion, weight, score')
+        .in('version_id', versionIds)
+    : { data: [] as ReportRateItem[] | null, error: null }
+
+  return {
+    kpis,
+    kpiTargets,
+    kpiRecords,
+    fsps,
+    diagnosis,
+    rateVersions,
+    rateItems: itemsRes.error ? [] : ((itemsRes.data as ReportRateItem[] | null) ?? []),
+    diaryEntries,
+    diaryDeliverables,
+  }
+}
+
+function isDateWithinPeriod(value: string | null | undefined, startDate: string, endDate: string) {
+  if (!value) return false
+  const normalizedValue = value.slice(0, 10)
+  return normalizedValue >= startDate && normalizedValue <= endDate
 }
