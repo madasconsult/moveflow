@@ -104,3 +104,24 @@ Este arquivo registra tarefas relevantes executadas com apoio do Codex no projet
 - Resultado: Documentação do MOVE REPORT criada com visão geral, versões estáveis, tipos de relatório, rotas, componentes, identidade visual FAUS, Comentário Consultivo, permissões, dados usados, governança, checklist e roadmap.
 - Commit: A confirmar
 - Observações: Entrega exclusivamente documental, sem alteração funcional, preparando governança para a Fase 3 com IA.
+
+### Tarefa 2026-05-05 - MOVE REPORT Fase 3 alternativa: Briefing para IA
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Abortar a tentativa de IA via API externa e implementar um gerador de briefing manual para uso em ferramentas externas de IA.
+- Branch: feature/reports-ai-briefing
+- Arquivos alterados:
+  - src/app/dashboard/relatorios/page.tsx
+  - src/app/api/reports/ai-briefing/route.ts
+  - src/components/reports/ReportCenterClient.tsx
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth, storage ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Central de Relatórios passa a oferecer Briefing para IA exclusivo para admin_faus, sem chamada externa, sem dependência nova e sem custo de API.
+- Commit: A confirmar
+- Observações: A tentativa anterior com API externa foi descartada localmente. O briefing é gerado em Markdown para copiar/colar manualmente no ChatGPT, Claude ou ferramenta equivalente.

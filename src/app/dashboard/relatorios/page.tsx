@@ -32,7 +32,10 @@ export default async function ReportsPage() {
       {!activeProjectContext.activeProject ? (
         <ActiveProjectEmptyState description="Selecione um projeto ativo para gerar relatórios deste módulo." />
       ) : (
-        <ReportCenterClient activeProject={activeProjectContext.activeProject} />
+        <ReportCenterClient
+          activeProject={activeProjectContext.activeProject}
+          canUseAiBriefing={session.profile.role === 'admin_faus'}
+        />
       )}
     </div>
   )

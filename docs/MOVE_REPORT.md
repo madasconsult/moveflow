@@ -40,6 +40,24 @@ Entregou:
 - Sanitização mínima do comentário.
 - Preparação estrutural para uma futura fase com IA, sem implementar IA.
 
+### Fase 3 alternativa - Briefing para IA
+
+A tentativa de integrar IA via API externa foi abortada por decisão de produto antes de commit, para permitir avaliação futura de custos, billing, governança e modelo de uso dentro da FAUS.
+
+A alternativa adotada nesta fase é o `Briefing para IA`.
+
+Entrega:
+
+- Card `Briefing para IA` na Central de Relatórios.
+- Rota server-side `/api/reports/ai-briefing`.
+- Geração de texto estruturado em Markdown com dados reais do projeto.
+- Uso manual em ChatGPT, Claude ou ferramenta similar, por copiar/colar.
+- Acesso exclusivo a `admin_faus` nesta fase.
+- Nenhuma chamada externa feita pelo MOVE FLOW.
+- Nenhuma dependência de IA instalada.
+- Nenhum uso de `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` ou variável equivalente.
+- Nenhum salvamento em banco, histórico ou storage.
+
 ## 3. Tipos de relatório disponíveis
 
 ### Relatório Executivo do Projeto
@@ -175,6 +193,39 @@ Comportamento quando não há dados:
 - Seções sem dados exibem mensagens elegantes de vazio.
 - Dados reais não são substituídos por mocks.
 
+### `/api/reports/ai-briefing`
+
+Rota server-side responsável por gerar o `Briefing para IA`.
+
+Método:
+
+- `POST`
+
+Payload esperado:
+
+- `projectId`: ID do projeto.
+- `startDate`: data inicial do período.
+- `endDate`: data final do período.
+- `consultantComment`: comentário consultivo opcional.
+
+Validações:
+
+- Usuário autenticado.
+- Perfil ativo.
+- Role `admin_faus`.
+- Acesso ao projeto pela mesma regra usada na geração de relatórios.
+- `projectId` obrigatório.
+
+Comportamento:
+
+- Carrega dados reais do projeto/período.
+- Monta um texto em Markdown com contexto, regras de análise, identidade FAUS, dados do projeto, ações, reuniões e próximos passos.
+- Retorna JSON no formato `{ "briefing": "..." }`.
+- Não chama OpenAI, Claude, Anthropic ou qualquer API externa.
+- Não gera PDF automaticamente.
+- Não salva o briefing em banco.
+- Não altera relatórios existentes.
+
 ## 5. Componentes principais
 
 ### `ReportCenterClient.tsx`
@@ -187,6 +238,8 @@ Responsabilidades:
 - Controlar o campo `Comentário Consultivo`.
 - Renderizar cards dos relatórios.
 - Enviar requisição `POST` para a API de relatórios.
+- Exibir o recurso `Briefing para IA` apenas quando autorizado.
+- Gerar, copiar e baixar o briefing em Markdown.
 - Baixar o PDF gerado.
 - Exibir feedback de sucesso ou erro.
 
@@ -368,11 +421,42 @@ Regras:
 - Normaliza quebras de linha excessivas.
 - Se vazio, a seção não aparece no PDF.
 - Não é salvo em banco.
-- Não é enviado para IA nesta fase.
+- Pode ser incluído no `Briefing para IA`, quando o admin gerar o briefing.
+- Não é enviado automaticamente para API externa.
+- O usuário decide se copiará o briefing manualmente para ChatGPT, Claude ou outra ferramenta.
 
 Objetivo:
 
-Permitir que o consultor registre uma leitura humana do período antes da geração do PDF. Essa estrutura prepara terreno para a Fase 3 com IA, mas a Fase 2 permanece completamente manual.
+Permitir que o consultor registre uma leitura humana do período antes da geração do PDF. A Fase 3 alternativa usa esse texto como insumo opcional para um briefing manual, sem integração externa.
+
+### Briefing para IA
+
+Nome visual:
+
+- `Briefing para IA`
+
+Rota:
+
+- `/api/reports/ai-briefing`
+
+Disponibilidade:
+
+- Exclusivo para `admin_faus` nesta fase.
+
+Regras:
+
+- Não chama API externa.
+- Não usa `OPENAI_API_KEY`.
+- Não usa `ANTHROPIC_API_KEY`.
+- Não instala dependência de IA.
+- Não gera custo recorrente de API.
+- Não salva o briefing no banco.
+- Não altera o PDF.
+- O conteúdo é exibido para o usuário copiar manualmente.
+
+Objetivo:
+
+Viabilizar análise avançada assistida por IA sem incorporar custo, billing, chave externa ou governança de prompts dentro do MOVE FLOW nesta fase.
 
 ## 8. Permissões
 
@@ -393,6 +477,7 @@ Regras:
 - A rota `/api/reports/[reportType]` também valida acesso.
 - A geração valida se o usuário tem acesso ao projeto informado.
 - A proteção não depende apenas da interface.
+- O recurso `Briefing para IA` é mais restrito que os PDFs: somente `admin_faus` pode visualizar e usar.
 
 ## 9. Dados usados
 
@@ -421,10 +506,12 @@ Regras obrigatórias para evolução:
 - Não alterar RLS sem tarefa específica.
 - Não alterar permissões sem validação explícita.
 - Não salvar PDFs em storage sem fase específica.
-- Não implementar IA sem revisão de prompt, dados enviados e privacidade.
+- Não implementar IA integrada sem revisão de custo, billing, prompt, dados enviados e privacidade.
+- Não usar `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` ou chaves equivalentes no frontend.
 - Não usar service role no frontend.
 - Não gerar relatórios com dados de projetos não acessíveis ao usuário.
 - Não incluir anexos ou uploads sem desenho de segurança.
+- Qualquer integração futura com IA deve ser tratada como nova fase, não como extensão implícita do briefing.
 
 ## 11. Checklist de teste
 
@@ -441,6 +528,12 @@ Antes de considerar uma alteração no MOVE REPORT pronta:
 - Logos FAUS aparecem.
 - PDF com `Comentário Consultivo` vazio gera normalmente.
 - PDF com `Comentário Consultivo` preenchido mostra a seção `Análise Consultiva do Período`.
+- `admin_faus` visualiza o card `Briefing para IA`.
+- `consultor_faus` e `consultor` não visualizam o card `Briefing para IA`.
+- Botão `Gerar briefing` retorna Markdown estruturado.
+- Botão `Copiar briefing` copia o texto.
+- Botão `Baixar .md` baixa o briefing em Markdown.
+- O briefing não aciona API externa.
 - Texto longo não quebra o layout do PDF.
 - Dados reais continuam aparecendo.
 - Seções vazias continuam elegantes.
@@ -451,13 +544,13 @@ Antes de considerar uma alteração no MOVE REPORT pronta:
 
 ## 12. Roadmap
 
-### Fase 3: Melhorar Comentário com IA
+### Fase 3: Briefing para IA
 
-Usar IA para apoiar o consultor na redação do comentário, mantendo revisão humana antes de gerar o PDF.
+Gerar briefing estruturado para uso manual em ferramentas de IA externas, sem chamada automática pelo MOVE FLOW.
 
-### Fase 4: Análise Executiva com IA
+### Fase 4: Avaliação futura de IA integrada
 
-Gerar análise executiva mais profunda a partir dos dados do projeto, com governança clara de prompts, privacidade e rastreabilidade.
+Avaliar se faz sentido integrar IA diretamente ao MOVE FLOW, considerando custo, billing, governança, privacidade, prompt, dados enviados e rastreabilidade.
 
 ### Fase 5: Histórico de relatórios
 
