@@ -86,3 +86,21 @@ Este arquivo registra tarefas relevantes executadas com apoio do Codex no projet
 - Resultado: KPIs exibem barra de Diagnóstico, Meta e Realizado; Rate FAUS exibe gauge geral, radar por eixo, gráficos de linha por eixo e páginas específicas de detalhe gráfico.
 - Commit: A confirmar
 - Observações: Estrutura visual preparada para futura geração de relatórios executivos/PDF do projeto.
+
+### Tarefa 2026-05-05 - Documentação do MOVE REPORT
+
+- Data: 2026-05-05
+- Solicitante: Manoel Malta
+- Objetivo: Documentar tecnicamente e funcionalmente o módulo MOVE REPORT antes da evolução para fases com IA.
+- Branch: feature/docs-move-report
+- Arquivos alterados:
+  - docs/MOVE_REPORT.md
+  - docs/CODEX_TASK_LOG.md
+- Banco de dados: Não houve alteração de schema, RLS, migrations, auth ou env.
+- Testes realizados:
+  - npm run build
+  - npm run lint
+  - npm run type-check
+- Resultado: Documentação do MOVE REPORT criada com visão geral, versões estáveis, tipos de relatório, rotas, componentes, identidade visual FAUS, Comentário Consultivo, permissões, dados usados, governança, checklist e roadmap.
+- Commit: A confirmar
+- Observações: Entrega exclusivamente documental, sem alteração funcional, preparando governança para a Fase 3 com IA.
