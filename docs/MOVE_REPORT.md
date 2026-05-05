@@ -58,6 +58,20 @@ Entrega:
 - Nenhum uso de `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` ou variável equivalente.
 - Nenhum salvamento em banco, histórico ou storage.
 
+### Fase 4.2 - Briefing com dados consultivos adicionais
+
+Evolução incremental do `Briefing para IA`, sem alterar PDFs.
+
+Entrega:
+
+- Inclusão de seção `KPIs e desempenho do período`.
+- Inclusão de seção `FSPs e análises de causa relevantes`.
+- Inclusão de seção `Diagnóstico e Rate FAUS`.
+- Inclusão de seção `Diário de Bordo e entregas realizadas`.
+- Uso apenas de dados reais do MOVE FLOW.
+- Sem chamada para IA externa.
+- Sem alteração de PDFs, banco, RLS, auth, storage, assets ou dependências.
+
 ## 3. Tipos de relatório disponíveis
 
 ### Relatório Executivo do Projeto
@@ -219,12 +233,27 @@ Validações:
 Comportamento:
 
 - Carrega dados reais do projeto/período.
-- Monta um texto em Markdown com contexto, regras de análise, identidade FAUS, dados do projeto, ações, reuniões e próximos passos.
+- Monta um texto em Markdown com contexto, regras de análise, identidade FAUS, dados do projeto, ações, reuniões, KPIs, FSPs, Diagnóstico/Rate FAUS, Diário de Bordo e próximos passos.
 - Retorna JSON no formato `{ "briefing": "..." }`.
 - Não chama OpenAI, Claude, Anthropic ou qualquer API externa.
 - Não gera PDF automaticamente.
 - Não salva o briefing em banco.
 - Não altera relatórios existentes.
+
+Dados consultivos adicionais da Fase 4.2:
+
+- KPIs: `kpis`, `kpi_target_periods`, `kpi_period_records`.
+- FSPs: `fsps`.
+- Diagnóstico/Rate FAUS: `project_diagnoses`, `rate_assessments`, `rate_assessment_versions`, `rate_assessment_items`.
+- Diário de Bordo: `diary_entries`, `diary_deliverables`.
+
+Limites de legibilidade:
+
+- Até 10 KPIs principais.
+- Até 10 FSPs relevantes.
+- Até 5 eixos críticos do Rate FAUS.
+- Até 10 registros de Diário de Bordo.
+- Até 5 entregáveis por registro de Diário de Bordo.
 
 ## 5. Componentes principais
 
@@ -453,6 +482,8 @@ Regras:
 - Não salva o briefing no banco.
 - Não altera o PDF.
 - O conteúdo é exibido para o usuário copiar manualmente.
+- A Fase 4.2 enriquece o briefing com KPIs, FSPs, Diagnóstico/Rate FAUS e Diário de Bordo.
+- Os PDFs permanecem inalterados nesta fase.
 
 Objetivo:
 
@@ -533,6 +564,11 @@ Antes de considerar uma alteração no MOVE REPORT pronta:
 - Botão `Gerar briefing` retorna Markdown estruturado.
 - Botão `Copiar briefing` copia o texto.
 - Botão `Baixar .md` baixa o briefing em Markdown.
+- Briefing inclui seção de KPIs e desempenho.
+- Briefing inclui seção de FSPs e análises de causa.
+- Briefing inclui seção de Diagnóstico e Rate FAUS.
+- Briefing inclui seção de Diário de Bordo.
+- Quando não há dados, o briefing declara a limitação sem quebrar.
 - O briefing não aciona API externa.
 - Texto longo não quebra o layout do PDF.
 - Dados reais continuam aparecendo.
@@ -551,6 +587,10 @@ Gerar briefing estruturado para uso manual em ferramentas de IA externas, sem ch
 ### Fase 4: Avaliação futura de IA integrada
 
 Avaliar se faz sentido integrar IA diretamente ao MOVE FLOW, considerando custo, billing, governança, privacidade, prompt, dados enviados e rastreabilidade.
+
+### Fase 4.2: Enriquecimento consultivo do Briefing para IA
+
+Implementada com inclusão de KPIs, FSPs, Diagnóstico/Rate FAUS e Diário de Bordo no briefing em Markdown, sem alterar PDFs.
 
 ### Fase 5: Histórico de relatórios
 
