@@ -114,6 +114,19 @@ export function EmptyState({ children }: { children: React.ReactNode }) {
   )
 }
 
+export function ConsultativeAnalysis({ comment }: { comment?: string | null }) {
+  if (!comment) return null
+
+  return (
+    <Section title="Análise Consultiva do Período">
+      <View style={reportStyles.consultativeBox}>
+        <Text style={reportStyles.consultativeKicker}>Leitura FAUS</Text>
+        <Text style={reportStyles.consultativeText}>{comment}</Text>
+      </View>
+    </Section>
+  )
+}
+
 export function MetricCard({
   label,
   value,

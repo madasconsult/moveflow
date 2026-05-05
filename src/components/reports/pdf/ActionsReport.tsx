@@ -1,5 +1,5 @@
 import { Document, Text, View } from '@react-pdf/renderer'
-import { ReportCover, ReportPage, Section, EmptyState, MetricCard } from '@/components/reports/pdf/ReportLayout'
+import { ConsultativeAnalysis, ReportCover, ReportPage, Section, EmptyState, MetricCard } from '@/components/reports/pdf/ReportLayout'
 import { reportStyles } from '@/components/reports/pdf/ReportTheme'
 import {
   formatReportDate,
@@ -33,6 +33,8 @@ export function ActionsReport({ data }: { data: ReportData }) {
           <MetricCard label="Em andamento" value={stats.inProgress} tone="warning" />
           <MetricCard label="Atrasadas" value={stats.overdue} tone="danger" />
         </View>
+
+        <ConsultativeAnalysis comment={data.consultantComment} />
 
         <Section title="Ações por status">
           {byStatus.length === 0 ? (

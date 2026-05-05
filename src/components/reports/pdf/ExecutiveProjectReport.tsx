@@ -1,5 +1,5 @@
 import { Document, Text, View } from '@react-pdf/renderer'
-import { ReportCover, ReportPage, Section, EmptyState, MetricCard } from '@/components/reports/pdf/ReportLayout'
+import { ConsultativeAnalysis, ReportCover, ReportPage, Section, EmptyState, MetricCard } from '@/components/reports/pdf/ReportLayout'
 import { reportStyles } from '@/components/reports/pdf/ReportTheme'
 import {
   formatReportDate,
@@ -32,6 +32,8 @@ export function ExecutiveProjectReport({ data }: { data: ReportData }) {
             {data.project.short_description || data.project.executive_scope || data.project.main_objective || 'Resumo executivo do projeto não informado.'}
           </Text>
         </Section>
+
+        <ConsultativeAnalysis comment={data.consultantComment} />
 
         <View style={reportStyles.grid}>
           <MetricCard label="Total de ações" value={stats.total} />

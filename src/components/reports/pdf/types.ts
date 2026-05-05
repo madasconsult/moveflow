@@ -53,4 +53,5 @@ export interface ReportData {
   actions: ReportAction[]
   meetings: ReportMeeting[]
   assets?: ReportAssets
+  consultantComment?: string | null
 }
