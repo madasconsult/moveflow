@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, FileText, Loader2 } from 'lucide-react'
+import { Clipboard, Download, FileDown, FileText, Loader2 } from 'lucide-react'
 import type { ActiveProjectOption } from '@/lib/active-project/server'
 import type { ReportType } from '@/components/reports/pdf/types'
 import { CONSULTANT_COMMENT_MAX_LENGTH } from '@/components/reports/pdf/utils'
 
 interface ReportCenterClientProps {
   activeProject: ActiveProjectOption
+  canUseAiBriefing: boolean
 }
 
 interface ReportCardConfig {
@@ -60,11 +61,14 @@ function getDefaultEndDate() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export function ReportCenterClient({ activeProject }: ReportCenterClientProps) {
+export function ReportCenterClient({ activeProject, canUseAiBriefing }: ReportCenterClientProps) {
   const [startDate, setStartDate] = useState(getDefaultStartDate)
   const [endDate, setEndDate] = useState(getDefaultEndDate)
   const [consultantComment, setConsultantComment] = useState('')
   const [loadingType, setLoadingType] = useState<ReportType | null>(null)
+  const [briefingLoading, setBriefingLoading] = useState(false)
+  const [briefingText, setBriefingText] = useState('')
+  const [briefingMessage, setBriefingMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const periodInvalid = useMemo(() => startDate > endDate, [startDate, endDate])
@@ -115,6 +119,85 @@ export function ReportCenterClient({ activeProject }: ReportCenterClientProps) {
     } finally {
       setLoadingType(null)
     }
+  }
+
+  async function handleGenerateBriefing() {
+    setMessage(null)
+    setBriefingMessage(null)
+
+    if (periodInvalid) {
+      setBriefingMessage({ type: 'error', text: 'A data inicial não pode ser maior que a data final.' })
+      return
+    }
+
+    setBriefingLoading(true)
+    try {
+      const response = await fetch('/api/reports/ai-briefing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: activeProject.id,
+          startDate,
+          endDate,
+          consultantComment,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Não foi possível gerar o briefing.')
+      }
+      if (typeof payload?.briefing !== 'string' || !payload.briefing.trim()) {
+        throw new Error('O briefing retornado está vazio.')
+      }
+
+      setBriefingText(payload.briefing)
+      setBriefingMessage({ type: 'success', text: 'Briefing gerado com sucesso.' })
+    } catch (error) {
+      setBriefingMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Não foi possível gerar o briefing.',
+      })
+    } finally {
+      setBriefingLoading(false)
+    }
+  }
+
+  async function handleCopyBriefing() {
+    if (!briefingText) {
+      setBriefingMessage({ type: 'error', text: 'Gere o briefing antes de copiar.' })
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(briefingText)
+      setBriefingMessage({ type: 'success', text: 'Briefing copiado para a área de transferência.' })
+    } catch {
+      setBriefingMessage({
+        type: 'error',
+        text: 'Não foi possível copiar automaticamente. Selecione o texto do briefing e copie manualmente.',
+      })
+    }
+  }
+
+  function handleDownloadBriefing() {
+    if (!briefingText) {
+      setBriefingMessage({ type: 'error', text: 'Gere o briefing antes de baixar.' })
+      return
+    }
+
+    const blob = new Blob([briefingText], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `briefing-ia-move-report-${startDate}-${endDate}.md`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    setBriefingMessage({ type: 'success', text: 'Arquivo .md do briefing gerado.' })
   }
 
   return (
@@ -252,6 +335,80 @@ export function ReportCenterClient({ activeProject }: ReportCenterClientProps) {
           </article>
         ))}
       </div>
+
+      {canUseAiBriefing && (
+        <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
+          <div className="grid gap-5 border-b border-neutral-100 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#DB6100]">
+                Apoio externo controlado
+              </p>
+              <h2 className="mt-2 text-xl font-semibold text-neutral-900">Briefing para IA</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-500">
+                Gere um pacote estruturado com dados do projeto, contexto do período, regras de análise e diretrizes visuais da FAUS para copiar e usar no ChatGPT ou Claude.
+              </p>
+              <p className="mt-2 text-xs font-medium text-neutral-500">
+                Esta função não chama API externa, não gera custo e não salva nada no banco.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleGenerateBriefing}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={briefingLoading || loadingType !== null}
+              >
+                {briefingLoading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                {briefingLoading ? 'Gerando briefing...' : 'Gerar briefing'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyBriefing}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!briefingText || briefingLoading}
+              >
+                <Clipboard size={16} />
+                Copiar briefing
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadBriefing}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!briefingText || briefingLoading}
+              >
+                <FileDown size={16} />
+                Baixar .md
+              </button>
+            </div>
+          </div>
+
+          {briefingMessage && (
+            <div
+              className={`mx-5 mt-5 rounded-xl border px-4 py-3 text-sm ${
+                briefingMessage.type === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {briefingMessage.text}
+            </div>
+          )}
+
+          <div className="p-5">
+            <label htmlFor="ai-briefing-output" className="label">
+              Briefing gerado
+            </label>
+            <textarea
+              id="ai-briefing-output"
+              value={briefingText}
+              onChange={event => setBriefingText(event.target.value)}
+              className="input min-h-[420px] resize-y font-mono text-xs leading-5"
+              placeholder="Clique em “Gerar briefing” para montar um pacote em Markdown com dados reais do projeto e instruções para uso externo em IA."
+            />
+          </div>
+        </section>
+      )}
     </div>
   )
 }
