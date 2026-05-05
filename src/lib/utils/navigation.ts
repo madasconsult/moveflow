@@ -47,6 +47,12 @@ export const DASHBOARD_NAV_ITEMS: NavItem[] = [
     roles: ['admin_faus', 'consultor_faus'],
   },
   {
+    label: 'Relatórios',
+    href:  '/dashboard/relatorios',
+    icon:  'FileText',
+    roles: ['admin_faus', 'consultor_faus'],
+  },
+  {
     label: 'Documentos',
     href:  '/dashboard/documentos',
     icon:  'FileText',
