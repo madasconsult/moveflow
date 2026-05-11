@@ -12,7 +12,7 @@ const PORTAL_ROUTES = ['/portal']
 const DASHBOARD_ROUTES = ['/dashboard']
 
 // Rotas exclusivas de admin
-const ADMIN_ONLY_ROUTES = ['/dashboard/usuarios', '/dashboard/clientes']
+const ADMIN_ONLY_ROUTES = ['/dashboard/usuarios']
 
 type MiddlewareProfile = Pick<Profile, 'role' | 'is_active'>
 
