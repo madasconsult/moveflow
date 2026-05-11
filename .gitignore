@@ -20,3 +20,4 @@ yarn-error.log*
 
 # types gerados — commitar só se quiser versionar
 # src/types/database.types.ts
+.claude/
