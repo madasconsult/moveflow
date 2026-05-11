@@ -156,11 +156,19 @@ export function ProjectForm({
 
       if (mode === 'create') {
         const { data: authData } = await supabase.auth.getUser()
+        const authUserId = authData.user?.id ?? null
+
+        if (!authUserId) {
+          throw new Error('Usuário autenticado não encontrado.')
+        }
+
+        const effectiveMainConsultantId = isAdmin ? mainConsultantValue : authUserId
+
         const insertPayload: InsertDto<'projects'> = {
           client_id: clientId,
           project_name: projectNameValue,
           short_description: shortDescriptionValue,
-          main_consultant_id: isAdmin ? mainConsultantValue : (currentUserId ?? null),
+          main_consultant_id: effectiveMainConsultantId,
           start_date: startDateValue,
           planned_end_date: plannedEndDateValue,
           status,
@@ -171,7 +179,7 @@ export function ProjectForm({
           complementary_workstreams: complementaryWorkstreamsValue,
           executive_scope: executiveScopeValue,
           scope_exclusions: scopeExclusionsValue,
-          created_by: authData.user?.id ?? null,
+          created_by: authUserId,
         }
 
         const { data, error } = await projectsTable
