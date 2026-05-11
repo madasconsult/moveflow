@@ -164,7 +164,10 @@ export function ProjectForm({
 
         const effectiveMainConsultantId = isAdmin ? mainConsultantValue : authUserId
 
+        const projectId = crypto.randomUUID()
+
         const insertPayload: InsertDto<'projects'> = {
+          id: projectId,
           client_id: clientId,
           project_name: projectNameValue,
           short_description: shortDescriptionValue,
@@ -182,18 +185,15 @@ export function ProjectForm({
           created_by: authUserId,
         }
 
-        const { data, error } = await projectsTable
-          .insert({
-            ...insertPayload,
-          })
-          .select('id')
-          .single()
+        const { error } = await projectsTable.insert({
+          ...insertPayload,
+        })
 
-        if (error || !data) {
-          throw new Error(error?.message ?? 'Não foi possível criar o projeto.')
+        if (error) {
+          throw new Error(error.message ?? 'Não foi possível criar o projeto.')
         }
 
-        router.push(`/dashboard/projetos/${(data as { id: string }).id}`)
+        router.push(`/dashboard/projetos/${projectId}`)
       } else if (initialData) {
         const { data, error } = await projectsTable
           .update(updatePayload)
