@@ -25,7 +25,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
   if (session.status === 'unauthenticated') redirect('/login')
   if (session.status === 'no_profile') redirect('/unauthorized?reason=no_profile')
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
-  if (session.profile.role !== 'admin_faus') redirect('/unauthorized?reason=forbidden')
+  if (session.profile.role === 'cliente') redirect('/portal')
 
   const supabase = await createClient()
 
@@ -65,10 +65,12 @@ export default async function ClientDetailPage({ params }: PageProps) {
           <Link href="/dashboard/clientes" className="btn-secondary">
             Voltar
           </Link>
-          <Link href={`/dashboard/clientes/${client.id}/editar`} className="btn-primary">
-            <Pencil size={16} />
-            Editar cliente
-          </Link>
+          {session.profile.role === 'admin_faus' && (
+            <Link href={`/dashboard/clientes/${client.id}/editar`} className="btn-primary">
+              <Pencil size={16} />
+              Editar cliente
+            </Link>
+          )}
         </div>
       </div>
 

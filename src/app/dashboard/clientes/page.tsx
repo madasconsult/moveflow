@@ -19,7 +19,7 @@ export default async function ClientsPage() {
   if (session.status === 'unauthenticated') redirect('/login')
   if (session.status === 'no_profile') redirect('/unauthorized?reason=no_profile')
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
-  if (session.profile.role !== 'admin_faus') redirect('/unauthorized?reason=forbidden')
+  if (session.profile.role === 'cliente') redirect('/portal')
 
   const supabase = await createClient()
   const { data } = await supabase
@@ -107,9 +107,11 @@ export default async function ClientsPage() {
                         <Link href={`/dashboard/clientes/${client.id}`} className="btn-ghost">
                           Ver
                         </Link>
-                        <Link href={`/dashboard/clientes/${client.id}/editar`} className="btn-secondary">
-                          Editar
-                        </Link>
+                        {session.profile.role === 'admin_faus' && (
+                          <Link href={`/dashboard/clientes/${client.id}/editar`} className="btn-secondary">
+                            Editar
+                          </Link>
+                        )}
                       </div>
                     </td>
                   </tr>

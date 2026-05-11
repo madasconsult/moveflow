@@ -36,6 +36,7 @@ interface ProjectFormProps {
   clients: ClientOption[]
   consultants: ConsultantOption[]
   isAdmin: boolean
+  currentUserId?: string
 }
 
 interface FormErrors {
@@ -56,6 +57,7 @@ export function ProjectForm({
   clients,
   consultants,
   isAdmin,
+  currentUserId,
 }: ProjectFormProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -63,7 +65,7 @@ export function ProjectForm({
   const [clientId, setClientId] = useState(initialData?.client_id ?? clients[0]?.id ?? '')
   const [projectName, setProjectName] = useState(initialData?.project_name ?? '')
   const [shortDescription, setShortDescription] = useState(initialData?.short_description ?? '')
-  const [mainConsultantId, setMainConsultantId] = useState(initialData?.main_consultant_id ?? '')
+  const [mainConsultantId, setMainConsultantId] = useState(initialData?.main_consultant_id ?? currentUserId ?? '')
   const [startDate, setStartDate] = useState(initialData?.start_date ?? '')
   const [plannedEndDate, setPlannedEndDate] = useState(initialData?.planned_end_date ?? '')
   const [status, setStatus] = useState<ProjectStatus>(initialData?.status ?? 'not_started')
@@ -158,7 +160,7 @@ export function ProjectForm({
           client_id: clientId,
           project_name: projectNameValue,
           short_description: shortDescriptionValue,
-          main_consultant_id: mainConsultantValue,
+          main_consultant_id: isAdmin ? mainConsultantValue : (currentUserId ?? null),
           start_date: startDateValue,
           planned_end_date: plannedEndDateValue,
           status,
@@ -230,7 +232,7 @@ export function ProjectForm({
               value={clientId}
               onChange={event => setClientId(event.target.value)}
               className="input"
-              disabled={saving || !isAdmin}
+              disabled={saving || (mode === 'edit' && !isAdmin)}
             >
               <option value="">Selecione</option>
               {clients.map(client => (

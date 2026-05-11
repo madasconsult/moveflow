@@ -20,7 +20,7 @@ export const DASHBOARD_NAV_ITEMS: NavItem[] = [
     label: 'Clientes',
     href:  '/dashboard/clientes',
     icon:  'Building2',
-    roles: ['admin_faus'],
+    roles: ['admin_faus', 'consultor_faus'],
   },
   {
     label: 'Projetos',

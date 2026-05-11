@@ -11,7 +11,7 @@ export default async function NewClientPage() {
   if (session.status === 'unauthenticated') redirect('/login')
   if (session.status === 'no_profile') redirect('/unauthorized?reason=no_profile')
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
-  if (session.profile.role !== 'admin_faus') redirect('/unauthorized?reason=forbidden')
+  if (session.profile.role === 'cliente') redirect('/portal')
 
   return (
     <div className="space-y-6 max-w-4xl">

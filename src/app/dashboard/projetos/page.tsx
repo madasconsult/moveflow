@@ -80,12 +80,10 @@ export default async function ProjectsPage() {
               : 'Acompanhe e atualize apenas os projetos aos quais você está vinculado.'}
           </p>
         </div>
-        {session.profile.role === 'admin_faus' && (
-          <Link href="/dashboard/projetos/novo" className="btn-primary">
-            <Plus size={16} />
-            Novo projeto
-          </Link>
-        )}
+        <Link href="/dashboard/projetos/novo" className="btn-primary">
+          <Plus size={16} />
+          Novo projeto
+        </Link>
       </div>
 
       <div className="card overflow-hidden">
@@ -98,12 +96,10 @@ export default async function ProjectsPage() {
                 ? 'Crie o primeiro projeto para ativar os módulos internos da Fase 2.'
                 : 'Os projetos vinculados ao seu perfil aparecerão aqui automaticamente conforme o vínculo no banco.'}
             </p>
-            {session.profile.role === 'admin_faus' && (
-              <Link href="/dashboard/projetos/novo" className="btn-primary mt-5">
-                <Plus size={16} />
-                Criar primeiro projeto
-              </Link>
-            )}
+            <Link href="/dashboard/projetos/novo" className="btn-primary mt-5">
+              <Plus size={16} />
+              Criar primeiro projeto
+            </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
