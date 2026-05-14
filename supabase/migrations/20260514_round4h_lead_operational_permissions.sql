@@ -182,6 +182,7 @@ with check (
         or (
           p.role::text = 'consultor_faus'
           and pr.main_consultant_id = auth.uid()
+          and diary_entries.deleted_at is null
         )
       )
   )
