@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { ProjectForm } from '@/components/projects/ProjectForm'
-import type { Client, Profile, Project } from '@/types/database.types'
+import type { Client, Profile, Project, UserRole } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Editar Projeto' }
 
@@ -13,6 +13,10 @@ interface PageProps {
 
 type ClientOption = Pick<Client, 'id' | 'company_name'>
 type ConsultantOption = Pick<Profile, 'id' | 'full_name'>
+type ProjectManagerOption = Pick<Profile, 'id' | 'full_name'>
+
+const INTERNAL_CONSULTANT_ROLES: UserRole[] = ['admin_faus', 'gestor_faus', 'consultor_faus']
+const PROJECT_MANAGER_ROLES: UserRole[] = ['admin_faus', 'gestor_faus']
 
 export default async function EditProjectPage({ params }: PageProps) {
   const session = await getSessionWithProfile()
@@ -35,7 +39,7 @@ export default async function EditProjectPage({ params }: PageProps) {
 
   const isAdmin = session.profile.role === 'admin_faus'
 
-  const [clientsRes, consultantsRes] = await Promise.all([
+  const [clientsRes, consultantsRes, managersRes] = await Promise.all([
     isAdmin
       ? supabase.from('clients').select('id, company_name').order('company_name')
       : supabase.from('clients').select('id, company_name').eq('id', project.client_id),
@@ -43,16 +47,27 @@ export default async function EditProjectPage({ params }: PageProps) {
       ? supabase
           .from('profiles')
           .select('id, full_name')
-          .eq('role', 'consultor_faus')
+          .in('role', INTERNAL_CONSULTANT_ROLES)
           .eq('is_active', true)
           .order('full_name')
       : project.main_consultant_id
         ? supabase.from('profiles').select('id, full_name').eq('id', project.main_consultant_id)
         : Promise.resolve({ data: [] as ConsultantOption[] | null }),
+    isAdmin
+      ? supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('role', PROJECT_MANAGER_ROLES)
+          .eq('is_active', true)
+          .order('full_name')
+      : project.project_manager_id
+        ? supabase.from('profiles').select('id, full_name').eq('id', project.project_manager_id)
+        : Promise.resolve({ data: [] as ProjectManagerOption[] | null }),
   ])
 
   const clients: ClientOption[] = (clientsRes.data as ClientOption[] | null) ?? []
   const consultants: ConsultantOption[] = (consultantsRes.data as ConsultantOption[] | null) ?? []
+  const projectManagers: ProjectManagerOption[] = (managersRes.data as ProjectManagerOption[] | null) ?? []
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -68,6 +83,7 @@ export default async function EditProjectPage({ params }: PageProps) {
         initialData={project}
         clients={clients}
         consultants={consultants}
+        projectManagers={projectManagers}
         isAdmin={isAdmin}
       />
     </div>

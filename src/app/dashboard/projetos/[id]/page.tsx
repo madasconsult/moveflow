@@ -11,6 +11,7 @@ import { getSessionWithProfile } from '@/lib/supabase/auth'
 import {
   DIAGNOSIS_STATUS_COLORS,
   DIAGNOSIS_STATUS_LABELS,
+  FAUS_BRANCH_LABELS,
   KPI_MONTH_OPTIONS,
   KPI_ORIGIN_TYPE_LABELS,
   KPI_STATUS_COLORS,
@@ -18,6 +19,7 @@ import {
   PROJECT_PHASE_LABELS,
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
+  PROJECT_TYPE_LABELS,
   STRATEGIC_FOCUS_LABELS,
   getMonthIndexFromDate,
   getMonthPeriodLabel,
@@ -56,6 +58,7 @@ interface PageProps {
 
 type ClientLookup = Pick<Client, 'id' | 'company_name'>
 type ConsultantLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
+type ProjectManagerLookup = Pick<Profile, 'id' | 'full_name'>
 type DiagnosisOwnerLookup = Pick<Profile, 'id' | 'full_name'>
 type ActionLookup = Pick<Action, 'id' | 'status'>
 type KpiLookup = Pick<
@@ -115,7 +118,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
 
   if (!project) notFound()
 
-  const [clientRes, consultantRes, diagnosisRes, actionsRes, kpisRes] = await Promise.all([
+  const [clientRes, consultantRes, managerRes, diagnosisRes, actionsRes, kpisRes] = await Promise.all([
     supabase
       .from('clients')
       .select('id, company_name')
@@ -126,6 +129,13 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
           .from('profiles')
           .select('id, full_name, email')
           .eq('id', project.main_consultant_id)
+          .single()
+      : Promise.resolve({ data: null }),
+    project.project_manager_id
+      ? supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('id', project.project_manager_id)
           .single()
       : Promise.resolve({ data: null }),
     supabase
@@ -146,6 +156,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
 
   const client = (clientRes.data as ClientLookup | null) ?? null
   const consultant = (consultantRes.data as ConsultantLookup | null) ?? null
+  const projectManager = (managerRes.data as ProjectManagerLookup | null) ?? null
   const diagnosis = (diagnosisRes.data as ProjectDiagnosis | null) ?? null
   const projectActions = (actionsRes.data as ActionLookup[] | null) ?? []
   const kpis = (kpisRes.data as KpiLookup[] | null) ?? []
@@ -379,6 +390,9 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
           <p className="text-sm font-semibold text-neutral-900">Contexto do projeto</p>
           <div className="mt-3 space-y-2 text-sm text-neutral-700">
             <p><span className="text-neutral-400">Fase:</span> {PROJECT_PHASE_LABELS[project.phase]}</p>
+            <p><span className="text-neutral-400">Tipo:</span> {project.project_type ? PROJECT_TYPE_LABELS[project.project_type] : 'Não definido'}</p>
+            <p><span className="text-neutral-400">Filial:</span> {project.branch ? FAUS_BRANCH_LABELS[project.branch] : 'Não definida'}</p>
+            <p><span className="text-neutral-400">Gestor:</span> {projectManager?.full_name ?? 'Não definido'}</p>
             <p><span className="text-neutral-400">Início:</span> {formatDate(project.start_date)}</p>
             <p><span className="text-neutral-400">Término planejado:</span> {formatDate(project.planned_end_date)}</p>
             <p><span className="text-neutral-400">Progresso:</span> {project.progress_percentage}%</p>

@@ -6,6 +6,7 @@ import type {
   ClientStatus,
   ProjectStatus,
   ProjectPhase,
+  ProjectTypeEnum,
   ActionStatus,
   ActionPriority,
   ActionClassification,
@@ -47,6 +48,13 @@ export const FAUS_BRANCH_LABELS: Record<FausBranch, string> = {
   mg: 'MG',
   ne: 'NE',
   sao_paulo_capital: 'São Paulo - Capital',
+}
+
+export const PROJECT_TYPE_LABELS: Record<ProjectTypeEnum, string> = {
+  consultoria: 'Consultoria',
+  inteligencia_de_dados: 'Inteligência de Dados',
+  tms_roteirizador: 'TMS/Roteirizador',
+  wms: 'WMS',
 }
 
 export const INTERNAL_ROLES: UserRole[] = ['admin_faus', 'gestor_faus', 'consultor_faus']

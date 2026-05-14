@@ -6,16 +6,20 @@ import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
+  FAUS_BRANCH_LABELS,
   PROJECT_PHASE_LABELS,
   PROJECT_STATUS_LABELS,
+  PROJECT_TYPE_LABELS,
   STRATEGIC_FOCUS_LABELS,
 } from '@/lib/utils'
 import type {
+  FausBranch,
   InsertDto,
   Profile,
   Project,
   ProjectPhase,
   ProjectStatus,
+  ProjectTypeEnum,
   StrategicFocus,
   UpdateDto,
 } from '@/types/database.types'
@@ -30,17 +34,26 @@ interface ConsultantOption {
   full_name: string
 }
 
+interface ProjectManagerOption {
+  id: string
+  full_name: string
+}
+
 interface ProjectFormProps {
   mode: 'create' | 'edit'
   initialData?: Project
   clients: ClientOption[]
   consultants: ConsultantOption[]
+  projectManagers: ProjectManagerOption[]
   isAdmin: boolean
   currentUserId?: string
 }
 
 interface FormErrors {
   client_id?: string
+  project_type?: string
+  branch?: string
+  project_manager_id?: string
   project_name?: string
   strategic_focus?: string
   main_objective?: string
@@ -56,6 +69,7 @@ export function ProjectForm({
   initialData,
   clients,
   consultants,
+  projectManagers,
   isAdmin,
   currentUserId,
 }: ProjectFormProps) {
@@ -63,6 +77,9 @@ export function ProjectForm({
   const supabase = createClient()
 
   const [clientId, setClientId] = useState(initialData?.client_id ?? clients[0]?.id ?? '')
+  const [projectType, setProjectType] = useState<ProjectTypeEnum | ''>(initialData?.project_type ?? '')
+  const [branch, setBranch] = useState<FausBranch | ''>(initialData?.branch ?? '')
+  const [projectManagerId, setProjectManagerId] = useState(initialData?.project_manager_id ?? '')
   const [projectName, setProjectName] = useState(initialData?.project_name ?? '')
   const [shortDescription, setShortDescription] = useState(initialData?.short_description ?? '')
   const [mainConsultantId, setMainConsultantId] = useState(initialData?.main_consultant_id ?? currentUserId ?? '')
@@ -85,6 +102,20 @@ export function ProjectForm({
     []
   )
 
+  const projectTypeOptions = useMemo(
+    () =>
+      (Object.entries(PROJECT_TYPE_LABELS) as [ProjectTypeEnum, string][])
+        .sort(([, firstLabel], [, secondLabel]) => firstLabel.localeCompare(secondLabel, 'pt-BR')),
+    []
+  )
+
+  const branchOptions = useMemo(
+    () =>
+      (Object.entries(FAUS_BRANCH_LABELS) as [FausBranch, string][])
+        .sort(([, firstLabel], [, secondLabel]) => firstLabel.localeCompare(secondLabel, 'pt-BR')),
+    []
+  )
+
   const statusOptions = useMemo(
     () => Object.entries(PROJECT_STATUS_LABELS) as [ProjectStatus, string][],
     []
@@ -99,6 +130,11 @@ export function ProjectForm({
     const nextErrors: FormErrors = {}
 
     if (!clientId) nextErrors.client_id = 'Selecione o cliente vinculado.'
+    if (!projectType) nextErrors.project_type = 'Selecione o tipo do projeto.'
+    if (!branch) nextErrors.branch = 'Selecione a filial responsável.'
+    if (mode === 'create' && isAdmin && !projectManagerId) {
+      nextErrors.project_manager_id = 'Selecione o gestor do projeto.'
+    }
     if (!projectName.trim()) nextErrors.project_name = 'Informe o nome do projeto.'
     if (!strategicFocus) nextErrors.strategic_focus = 'Selecione o foco estratégico.'
     if (!mainObjective.trim()) nextErrors.main_objective = 'Descreva o objetivo principal.'
@@ -124,6 +160,9 @@ export function ProjectForm({
     const projectNameValue = projectName.trim()
     const shortDescriptionValue = shortDescription.trim() || null
     const mainConsultantValue = mainConsultantId || null
+    const projectTypeValue = projectType as ProjectTypeEnum
+    const branchValue = branch as FausBranch
+    const projectManagerValue = projectManagerId || null
     const startDateValue = startDate || null
     const plannedEndDateValue = plannedEndDate || null
     const progressValue = Number.isFinite(Number(progressPercentage))
@@ -138,7 +177,10 @@ export function ProjectForm({
     const updatePayload: UpdateDto<'projects'> = {
       project_name: projectNameValue,
       short_description: shortDescriptionValue,
-      main_consultant_id: mainConsultantValue,
+      main_consultant_id: isAdmin ? mainConsultantValue : initialData?.main_consultant_id ?? mainConsultantValue,
+      project_type: projectTypeValue,
+      branch: branchValue,
+      project_manager_id: isAdmin ? projectManagerValue : initialData?.project_manager_id ?? null,
       start_date: startDateValue,
       planned_end_date: plannedEndDateValue,
       status,
@@ -172,6 +214,9 @@ export function ProjectForm({
           project_name: projectNameValue,
           short_description: shortDescriptionValue,
           main_consultant_id: effectiveMainConsultantId,
+          project_type: projectTypeValue,
+          branch: branchValue,
+          project_manager_id: isAdmin ? projectManagerValue : null,
           start_date: startDateValue,
           planned_end_date: plannedEndDateValue,
           status,
@@ -270,6 +315,77 @@ export function ProjectForm({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label htmlFor="project_type" className="label">
+              Tipo do projeto *
+            </label>
+            <select
+              id="project_type"
+              value={projectType}
+              onChange={event => setProjectType(event.target.value as ProjectTypeEnum | '')}
+              className="input"
+              disabled={saving || (mode === 'edit' && !isAdmin)}
+            >
+              <option value="">Selecione</option>
+              {projectTypeOptions.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {errors.project_type && <p className="mt-1 text-xs text-red-600">{errors.project_type}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="branch" className="label">
+              Filial responsável *
+            </label>
+            <select
+              id="branch"
+              value={branch}
+              onChange={event => setBranch(event.target.value as FausBranch | '')}
+              className="input"
+              disabled={saving || (mode === 'edit' && !isAdmin)}
+            >
+              <option value="">Selecione</option>
+              {branchOptions.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-neutral-400">
+              Filial responsável pelo acompanhamento FAUS, não necessariamente o local físico do cliente.
+            </p>
+            {errors.branch && <p className="mt-1 text-xs text-red-600">{errors.branch}</p>}
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="project_manager_id" className="label">
+              Gestor do projeto {mode === 'create' && isAdmin ? '*' : ''}
+            </label>
+            <select
+              id="project_manager_id"
+              value={projectManagerId}
+              onChange={event => setProjectManagerId(event.target.value)}
+              className="input"
+              disabled={saving || !isAdmin}
+            >
+              <option value="">Não definido</option>
+              {projectManagers.map(manager => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.full_name}
+                </option>
+              ))}
+            </select>
+            {!isAdmin && (
+              <p className="mt-1 text-xs text-neutral-400">
+                Somente Admin FAUS pode alterar o gestor do projeto.
+              </p>
+            )}
+            {errors.project_manager_id && <p className="mt-1 text-xs text-red-600">{errors.project_manager_id}</p>}
           </div>
 
           <div className="md:col-span-2">
