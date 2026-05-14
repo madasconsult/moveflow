@@ -29,6 +29,8 @@ interface DraftState {
   is_active: boolean
 }
 
+const ORIGINAL_ADMIN_ID = '8ba21d13-8ceb-4695-b591-126ff320e6f8'
+
 const ROLE_OPTIONS: UserRole[] = [...(['admin_faus', 'consultor_faus', 'gestor_faus', 'cliente'] as UserRole[])]
   .sort((firstRole, secondRole) => ROLE_LABELS[firstRole].localeCompare(ROLE_LABELS[secondRole], 'pt-BR'))
 
@@ -48,6 +50,15 @@ function normalizeDraft(draft: DraftState): DraftState {
   }
 }
 
+function normalizeOriginalAdminDraft(draft: DraftState): DraftState {
+  return {
+    ...draft,
+    role: 'admin_faus',
+    client_id: null,
+    is_active: true,
+  }
+}
+
 export function UsersManagementTable({ users, clients }: UsersManagementTableProps) {
   const supabase = createClient()
   const [drafts, setDrafts] = useState<Record<string, DraftState>>(
@@ -56,10 +67,10 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
         user.id,
         {
           full_name: user.full_name,
-          role: user.role,
+          role: user.id === ORIGINAL_ADMIN_ID ? 'admin_faus' : user.role,
           branch: isInternalRole(user.role) ? user.branch : null,
-          client_id: user.role === 'cliente' ? user.client_id : null,
-          is_active: user.is_active,
+          client_id: user.id === ORIGINAL_ADMIN_ID ? null : user.role === 'cliente' ? user.client_id : null,
+          is_active: user.id === ORIGINAL_ADMIN_ID ? true : user.is_active,
         },
       ])
     )
@@ -108,6 +119,8 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
   }
 
   function updateRole(userId: string, draft: DraftState, role: UserRole) {
+    if (userId === ORIGINAL_ADMIN_ID) return
+
     updateDraft(userId, {
       ...draft,
       role,
@@ -119,7 +132,23 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
   async function handleSave(user: UserRow) {
     const draft = drafts[user.id]
     if (!draft) return
-    const normalizedDraft = normalizeDraft(draft)
+    const baseNormalizedDraft = normalizeDraft(draft)
+
+    if (
+      user.id === ORIGINAL_ADMIN_ID &&
+      (
+        baseNormalizedDraft.role !== 'admin_faus' ||
+        baseNormalizedDraft.is_active !== true ||
+        baseNormalizedDraft.client_id !== null
+      )
+    ) {
+      setError('O Admin Original do MOVE FLOW não pode ser rebaixado, desativado ou vinculado a cliente.')
+      return
+    }
+
+    const normalizedDraft = user.id === ORIGINAL_ADMIN_ID
+      ? normalizeOriginalAdminDraft(baseNormalizedDraft)
+      : baseNormalizedDraft
 
     if (!normalizedDraft.full_name) {
       setError('O nome do usuário não pode ficar vazio.')
@@ -193,6 +222,7 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
             {users.map(user => {
               const draft = drafts[user.id]
               const isSaving = savingId === user.id
+              const isOriginalAdmin = user.id === ORIGINAL_ADMIN_ID
               const hasChanges = changedIds.has(user.id) && draft.full_name.trim().length > 0
 
               return (
@@ -212,18 +242,23 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
                   </td>
                   <td className="px-5 py-4 text-neutral-700">{user.email}</td>
                   <td className="px-5 py-4">
-                    <select
-                      value={draft.role}
-                      onChange={event => updateRole(user.id, draft, event.target.value as UserRole)}
-                      className="input h-10 min-w-[220px]"
-                      disabled={isSaving}
-                    >
-                      {ROLE_OPTIONS.map(role => (
-                        <option key={role} value={role}>
-                          {ROLE_LABELS[role]}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="space-y-2">
+                      <select
+                        value={isOriginalAdmin ? 'admin_faus' : draft.role}
+                        onChange={event => updateRole(user.id, draft, event.target.value as UserRole)}
+                        className="input h-10 min-w-[220px]"
+                        disabled={isSaving || isOriginalAdmin}
+                      >
+                        {ROLE_OPTIONS.map(role => (
+                          <option key={role} value={role}>
+                            {ROLE_LABELS[role]}
+                          </option>
+                        ))}
+                      </select>
+                      {isOriginalAdmin && (
+                        <span className="badge bg-cyan-50 text-cyan-700">Admin Original</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-4">
                     {isInternalRole(draft.role) ? (
@@ -277,7 +312,7 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
                   </td>
                   <td className="px-5 py-4">
                     <select
-                      value={draft.is_active ? 'active' : 'inactive'}
+                      value={isOriginalAdmin || draft.is_active ? 'active' : 'inactive'}
                       onChange={event =>
                         updateDraft(user.id, {
                           ...draft,
@@ -285,7 +320,7 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
                         })
                       }
                       className="input h-10 min-w-[160px]"
-                      disabled={isSaving}
+                      disabled={isSaving || isOriginalAdmin}
                     >
                       <option value="active">Ativo</option>
                       <option value="inactive">Inativo</option>
@@ -296,12 +331,12 @@ export function UsersManagementTable({ users, clients }: UsersManagementTablePro
                     <div className="flex items-center justify-end gap-3">
                       <span
                         className={`badge ${
-                          draft.is_active
+                          isOriginalAdmin || draft.is_active
                             ? 'bg-green-50 text-green-700'
                             : 'bg-neutral-100 text-neutral-500'
                         }`}
                       >
-                        {draft.is_active ? 'Ativo' : 'Inativo'}
+                        {isOriginalAdmin || draft.is_active ? 'Ativo' : 'Inativo'}
                       </span>
                       <button
                         type="button"
