@@ -63,12 +63,13 @@ export default async function PortalPage() {
     )
   }
 
-  // Busca contadores (RLS filtra visible_to_client automaticamente)
+  // Busca contadores do portal sem depender apenas da RLS para visibilidade externa.
   const [actionsRes, meetingsRes, docsRes, kpisRes, diagnosisRes] = await Promise.all([
     supabase
       .from('actions')
       .select('id, status', { count: 'exact' })
-      .eq('project_id', project.id),
+      .eq('project_id', project.id)
+      .eq('visible_to_client', true),
     supabase
       .from('meetings')
       .select('id, meeting_date, meeting_type', { count: 'exact' })
