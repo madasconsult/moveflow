@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { ActionForm } from '@/components/actions/ActionForm'
-import type { Action, Profile, Project } from '@/types/database.types'
+import type { Action, Profile, Project, UserRole } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Editar Ação' }
 
@@ -13,6 +13,8 @@ interface PageProps {
 
 type ProjectOption = Pick<Project, 'id' | 'project_name'>
 type ResponsibleOption = Pick<Profile, 'id' | 'full_name'>
+type ProjectPermissionLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
+const RESPONSIBLE_ROLES: UserRole[] = ['admin_faus', 'gestor_faus', 'consultor_faus']
 
 export default async function EditActionPage({ params }: PageProps) {
   const session = await getSessionWithProfile()
@@ -33,17 +35,29 @@ export default async function EditActionPage({ params }: PageProps) {
 
   if (!action) notFound()
 
+  const projectPermissionRes = await supabase
+    .from('projects')
+    .select('id, project_name, main_consultant_id')
+    .eq('id', action.project_id)
+    .single()
+
+  const projectPermission = (projectPermissionRes.data as ProjectPermissionLookup | null) ?? null
   const isAdmin = session.profile.role === 'admin_faus'
+  const isLeadConsultant =
+    session.profile.role === 'consultor_faus' &&
+    projectPermission?.main_consultant_id === session.profile.id
+
+  if (!isAdmin && !isLeadConsultant) redirect('/unauthorized?reason=forbidden')
 
   const [projectsRes, responsiblesRes] = await Promise.all([
     isAdmin
       ? supabase.from('projects').select('id, project_name').order('project_name')
-      : supabase.from('projects').select('id, project_name').eq('id', action.project_id),
-    isAdmin
+      : Promise.resolve({ data: projectPermission ? [projectPermission] : [] as ProjectOption[] | null }),
+    isAdmin || isLeadConsultant
       ? supabase
           .from('profiles')
           .select('id, full_name')
-          .in('role', ['admin_faus', 'consultor_faus'])
+          .in('role', RESPONSIBLE_ROLES)
           .eq('is_active', true)
           .order('full_name')
       : action.assigned_to && action.assigned_to !== session.profile.id

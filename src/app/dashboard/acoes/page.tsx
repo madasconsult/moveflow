@@ -40,6 +40,7 @@ type ActionListItem = Pick<
 >
 
 type ProjectLookup = Pick<Project, 'id' | 'project_name'>
+type ProjectPermissionLookup = Pick<Project, 'id' | 'main_consultant_id'>
 type ProfileLookup = Pick<Profile, 'id' | 'full_name'>
 type StepLookup = Pick<ActionStep, 'action_id' | 'status'>
 
@@ -90,13 +91,24 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
   }
 
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('actions')
-    .select('id, business_id, project_id, title, assigned_to, status, priority, due_date, completion_date, visible_to_client, updated_at')
-    .eq('project_id', activeProjectId)
-    .order('due_date', { ascending: true, nullsFirst: false })
+  const [actionsRes, activeProjectRes] = await Promise.all([
+    supabase
+      .from('actions')
+      .select('id, business_id, project_id, title, assigned_to, status, priority, due_date, completion_date, visible_to_client, updated_at')
+      .eq('project_id', activeProjectId)
+      .order('due_date', { ascending: true, nullsFirst: false }),
+    supabase
+      .from('projects')
+      .select('id, main_consultant_id')
+      .eq('id', activeProjectId)
+      .single(),
+  ])
 
-  let actions: ActionListItem[] = (data as ActionListItem[] | null) ?? []
+  let actions: ActionListItem[] = (actionsRes.data as ActionListItem[] | null) ?? []
+  const activeProject = (activeProjectRes.data as ProjectPermissionLookup | null) ?? null
+  const canCreateAction =
+    session.profile.role === 'admin_faus' ||
+    (session.profile.role === 'consultor_faus' && activeProject?.main_consultant_id === session.profile.id)
 
   if (statusGroup === 'pending') {
     actions = actions.filter(action => ['not_started', 'in_progress', 'waiting_faus'].includes(action.status))
@@ -164,7 +176,7 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
             <Workflow size={16} />
             Pipeline
           </Link>
-          {session.profile.role === 'admin_faus' && (
+          {canCreateAction && (
             <Link href="/dashboard/acoes/novo" className="btn-primary">
               <Plus size={16} />
               Nova ação
@@ -180,7 +192,7 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
           <p className="mt-1 max-w-md text-sm text-neutral-500">
             Nenhum registro encontrado para este projeto.
           </p>
-          {session.profile.role === 'admin_faus' && (
+          {canCreateAction && (
             <Link href="/dashboard/acoes/novo" className="btn-primary mt-5">
               <Plus size={16} />
               Criar primeira ação
@@ -356,9 +368,11 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
                         <Link href={`/dashboard/acoes/${action.id}`} className="btn-ghost">
                           Ver
                         </Link>
-                        <Link href={`/dashboard/acoes/${action.id}/editar`} className="btn-secondary">
-                          Editar
-                        </Link>
+                        {canCreateAction && (
+                          <Link href={`/dashboard/acoes/${action.id}/editar`} className="btn-secondary">
+                            Editar
+                          </Link>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -19,7 +19,7 @@ interface PageProps {
   params: { id: string }
 }
 
-type ProjectLookup = Pick<Project, 'id' | 'project_name'>
+type ProjectLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
 type ResponsibleOption = Pick<Profile, 'id' | 'full_name'>
 
 export default async function ProjectDiagnosisPage({ params }: PageProps) {
@@ -34,7 +34,7 @@ export default async function ProjectDiagnosisPage({ params }: PageProps) {
 
   const { data: projectData } = await supabase
     .from('projects')
-    .select('id, project_name')
+    .select('id, project_name, main_consultant_id')
     .eq('id', params.id)
     .single()
 
@@ -43,6 +43,10 @@ export default async function ProjectDiagnosisPage({ params }: PageProps) {
   if (!project) notFound()
 
   const isAdmin = session.profile.role === 'admin_faus'
+  const isLeadConsultant =
+    session.profile.role === 'consultor_faus' &&
+    project.main_consultant_id === session.profile.id
+  const canEditDiagnosis = isAdmin || isLeadConsultant
 
   const { data: diagnosisData } = await supabase
     .from('project_diagnoses')
@@ -80,11 +84,11 @@ export default async function ProjectDiagnosisPage({ params }: PageProps) {
           .eq('diagnosis_id', diagnosis.id)
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as DiagnosisIndicator[] | null }),
-    isAdmin
+    canEditDiagnosis
       ? supabase
           .from('profiles')
           .select('id, full_name')
-          .in('role', ['admin_faus', 'consultor_faus'])
+          .in('role', ['admin_faus', 'gestor_faus', 'consultor_faus'])
           .eq('is_active', true)
           .order('full_name')
       : supabase
@@ -132,6 +136,7 @@ export default async function ProjectDiagnosisPage({ params }: PageProps) {
         responsibles={responsibles}
         rateFeatureEnabled={rateFeatureEnabled}
         isAdmin={isAdmin}
+        canEdit={canEditDiagnosis}
         rateSummary={rateSummary}
       />
     </div>

@@ -49,6 +49,7 @@ interface KpiFormProps {
   diagnosisFeatureEnabled?: boolean
   canChooseProject: boolean
   canEditUnitOfMeasure?: boolean
+  canEditStructuralFields?: boolean
 }
 
 interface FormErrors {
@@ -70,6 +71,7 @@ export function KpiForm({
   diagnosisFeatureEnabled = true,
   canChooseProject,
   canEditUnitOfMeasure = false,
+  canEditStructuralFields = mode === 'create',
 }: KpiFormProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -170,17 +172,20 @@ export function KpiForm({
       kpi_name: kpiNameValue,
       current_value: currentValueParsed,
       target_value: targetValueParsed,
-      reading_type: readingType,
       status,
       trend: trendValue,
       visible_to_client: visibleToClient,
+    }
+
+    if (canEditStructuralFields) {
+      updatePayload.reading_type = readingType
     }
 
     if (canEditUnitOfMeasure) {
       updatePayload.unit_of_measure = unitOfMeasureValue
     }
 
-    if (diagnosisFeatureEnabled) {
+    if (diagnosisFeatureEnabled && canEditStructuralFields) {
       updatePayload.origin_type = originType
       updatePayload.diagnosis_indicator_id = diagnosisIndicatorValue
     }
@@ -303,7 +308,7 @@ export function KpiForm({
             value={readingType}
             onChange={event => setReadingType(event.target.value as KpiReadingType)}
             className="input"
-            disabled={saving}
+            disabled={saving || (mode === 'edit' && !canEditStructuralFields)}
           >
             {readingTypeOptions.map(([value, label]) => (
               <option key={value} value={value}>
@@ -377,7 +382,7 @@ export function KpiForm({
                 }
               }}
               className="input"
-              disabled={saving}
+              disabled={saving || (mode === 'edit' && !canEditStructuralFields)}
             >
               {originTypeOptions.map(([value, label]) => (
                 <option key={value} value={value}>
@@ -436,7 +441,7 @@ export function KpiForm({
               value={diagnosisIndicatorId}
               onChange={event => setDiagnosisIndicatorId(event.target.value)}
               className="input"
-              disabled={saving}
+              disabled={saving || (mode === 'edit' && !canEditStructuralFields)}
             >
               <option value="">Selecione</option>
               {availableDiagnosisIndicators.map(indicator => (

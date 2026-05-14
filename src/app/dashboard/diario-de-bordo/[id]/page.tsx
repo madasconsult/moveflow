@@ -14,7 +14,7 @@ interface PageProps {
   params: { id: string }
 }
 
-type ProjectLookup = Pick<Project, 'id' | 'project_name' | 'client_id'> & {
+type ProjectLookup = Pick<Project, 'id' | 'project_name' | 'client_id' | 'main_consultant_id'> & {
   clients: { company_name: string | null } | { company_name: string | null }[] | null
 }
 type CreatorLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
@@ -41,7 +41,7 @@ export default async function DiaryEntryDetailPage({ params }: PageProps) {
   const [projectRes, deliverablesRes, creatorRes] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, project_name, client_id, clients(company_name)')
+      .select('id, project_name, client_id, main_consultant_id, clients(company_name)')
       .eq('id', entry.project_id)
       .single(),
     supabase
@@ -59,6 +59,9 @@ export default async function DiaryEntryDetailPage({ params }: PageProps) {
   const deliverables = (deliverablesRes.data as DiaryDeliverable[] | null) ?? []
   const creator = (creatorRes.data as CreatorLookup | null) ?? null
   const isAdmin = session.profile.role === 'admin_faus'
+  const canManageDiary =
+    isAdmin ||
+    (session.profile.role === 'consultor_faus' && project?.main_consultant_id === session.profile.id)
 
   return (
     <div className="space-y-6">
@@ -73,10 +76,12 @@ export default async function DiaryEntryDetailPage({ params }: PageProps) {
           <Link href="/dashboard/diario-de-bordo" className="btn-secondary">
             Voltar
           </Link>
-          <Link href={`/dashboard/diario-de-bordo/${entry.id}/editar`} className="btn-primary">
-            <Pencil size={16} />
-            Editar
-          </Link>
+          {canManageDiary && (
+            <Link href={`/dashboard/diario-de-bordo/${entry.id}/editar`} className="btn-primary">
+              <Pencil size={16} />
+              Editar
+            </Link>
+          )}
           {isAdmin && <DeleteDiaryEntryButton entryId={entry.id} />}
         </div>
       </div>

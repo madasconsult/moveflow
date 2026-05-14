@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { KpiPeriodRecordForm } from '@/components/kpis/KpiPeriodRecordForm'
-import type { Kpi, KpiPeriodRecord, KpiTargetPeriod } from '@/types/database.types'
+import type { Kpi, KpiPeriodRecord, KpiTargetPeriod, Project } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Apuração do KPI' }
 
@@ -12,7 +12,8 @@ interface PageProps {
   params: { id: string }
 }
 
-type KpiLookup = Pick<Kpi, 'id' | 'kpi_name' | 'reading_type' | 'unit_of_measure' | 'current_value'>
+type KpiLookup = Pick<Kpi, 'id' | 'project_id' | 'kpi_name' | 'reading_type' | 'unit_of_measure' | 'current_value'>
+type ProjectPermissionLookup = Pick<Project, 'id' | 'main_consultant_id'>
 
 export default async function KpiPeriodRecordPage({ params }: PageProps) {
   const session = await getSessionWithProfile()
@@ -35,7 +36,7 @@ export default async function KpiPeriodRecordPage({ params }: PageProps) {
   const [kpiRes, recordRes] = await Promise.all([
     supabase
       .from('kpis')
-      .select('id, kpi_name, reading_type, unit_of_measure, current_value')
+      .select('id, project_id, kpi_name, reading_type, unit_of_measure, current_value')
       .eq('id', targetPeriod.kpi_id)
       .single(),
     supabase
@@ -49,6 +50,18 @@ export default async function KpiPeriodRecordPage({ params }: PageProps) {
   const record = (recordRes.data as KpiPeriodRecord | null) ?? null
 
   if (!kpi) notFound()
+
+  const projectRes = await supabase
+    .from('projects')
+    .select('id, main_consultant_id')
+    .eq('id', kpi.project_id)
+    .single()
+  const project = (projectRes.data as ProjectPermissionLookup | null) ?? null
+  const canManageKpi =
+    session.profile.role === 'admin_faus' ||
+    (session.profile.role === 'consultor_faus' && project?.main_consultant_id === session.profile.id)
+
+  if (!canManageKpi) redirect('/unauthorized?reason=forbidden')
 
   return (
     <div className="max-w-4xl space-y-6">

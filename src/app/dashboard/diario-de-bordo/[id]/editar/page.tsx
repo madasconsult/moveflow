@@ -4,7 +4,7 @@ import { DiaryEntryForm } from '@/components/diary/DiaryEntryForm'
 import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
-import type { DiaryDeliverable, DiaryEntry } from '@/types/database.types'
+import type { DiaryDeliverable, DiaryEntry, Project } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Editar Diário de Bordo' }
 
@@ -40,6 +40,17 @@ export default async function EditDiaryEntryPage({ params }: PageProps) {
   if (!entry) notFound()
 
   const deliverables = (deliverablesRes.data as DiaryDeliverable[] | null) ?? []
+  const projectRes = await supabase
+    .from('projects')
+    .select('id, main_consultant_id')
+    .eq('id', entry.project_id)
+    .single()
+  const project = (projectRes.data as Pick<Project, 'id' | 'main_consultant_id'> | null) ?? null
+  const canManageDiary =
+    session.profile.role === 'admin_faus' ||
+    (session.profile.role === 'consultor_faus' && project?.main_consultant_id === session.profile.id)
+
+  if (!canManageDiary) redirect('/unauthorized?reason=forbidden')
 
   return (
     <div className="max-w-5xl space-y-6">

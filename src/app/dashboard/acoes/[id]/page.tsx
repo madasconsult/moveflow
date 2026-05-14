@@ -24,7 +24,7 @@ interface PageProps {
   params: { id: string }
 }
 
-type ProjectLookup = Pick<Project, 'id' | 'project_name'>
+type ProjectPermissionLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
 type ResponsibleLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
 
 export default async function ActionDetailPage({ params }: PageProps) {
@@ -47,7 +47,7 @@ export default async function ActionDetailPage({ params }: PageProps) {
   if (!action) notFound()
 
   const [projectRes, responsibleRes, stepsRes] = await Promise.all([
-    supabase.from('projects').select('id, project_name').eq('id', action.project_id).single(),
+    supabase.from('projects').select('id, project_name, main_consultant_id').eq('id', action.project_id).single(),
     action.assigned_to
       ? supabase.from('profiles').select('id, full_name, email').eq('id', action.assigned_to).single()
       : Promise.resolve({ data: null }),
@@ -59,9 +59,12 @@ export default async function ActionDetailPage({ params }: PageProps) {
       .order('created_at', { ascending: true }),
   ])
 
-  const project = (projectRes.data as ProjectLookup | null) ?? null
+  const project = (projectRes.data as ProjectPermissionLookup | null) ?? null
   const responsible = (responsibleRes.data as ResponsibleLookup | null) ?? null
   const actionSteps = (stepsRes.data as ActionStep[] | null) ?? []
+  const canManageAction =
+    session.profile.role === 'admin_faus' ||
+    (session.profile.role === 'consultor_faus' && project?.main_consultant_id === session.profile.id)
 
   return (
     <div className="space-y-6">
@@ -81,22 +84,26 @@ export default async function ActionDetailPage({ params }: PageProps) {
           <Link href="/dashboard/acoes" className="btn-secondary h-10 shrink-0 whitespace-nowrap px-4">
             Voltar
           </Link>
-          <Link
-            href={`/dashboard/fsps/novo?sourceType=action&actionId=${action.id}`}
-            className="btn-secondary h-10 shrink-0 whitespace-nowrap px-4"
-          >
-            Abrir FSP
-          </Link>
-          <Link href={`/dashboard/acoes/${action.id}/editar`} className="btn-primary h-10 shrink-0 whitespace-nowrap px-4">
-            <Pencil size={16} />
-            Editar ação
-          </Link>
-          <MarkActionCompletedButton
-            actionId={action.id}
-            isCompleted={action.status === 'completed'}
-            containerClassName="w-full sm:w-auto sm:min-w-[220px]"
-            buttonClassName="h-10 whitespace-nowrap px-4 !bg-green-600 !text-white hover:!bg-green-700 focus:!ring-green-500 disabled:!bg-green-100 disabled:!text-green-700"
-          />
+          {canManageAction && (
+            <>
+              <Link
+                href={`/dashboard/fsps/novo?sourceType=action&actionId=${action.id}`}
+                className="btn-secondary h-10 shrink-0 whitespace-nowrap px-4"
+              >
+                Abrir FSP
+              </Link>
+              <Link href={`/dashboard/acoes/${action.id}/editar`} className="btn-primary h-10 shrink-0 whitespace-nowrap px-4">
+                <Pencil size={16} />
+                Editar ação
+              </Link>
+              <MarkActionCompletedButton
+                actionId={action.id}
+                isCompleted={action.status === 'completed'}
+                containerClassName="w-full sm:w-auto sm:min-w-[220px]"
+                buttonClassName="h-10 whitespace-nowrap px-4 !bg-green-600 !text-white hover:!bg-green-700 focus:!ring-green-500 disabled:!bg-green-100 disabled:!text-green-700"
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -183,7 +190,7 @@ export default async function ActionDetailPage({ params }: PageProps) {
           actionStatus={action.status}
           actionCompletionDate={action.completion_date}
           initialSteps={actionSteps}
-          canEdit
+          canEdit={canManageAction}
         />
       </div>
     </div>

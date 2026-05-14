@@ -1,7 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft, CheckSquare } from 'lucide-react'
+import { ArrowLeft, CheckSquare, Rows4, Workflow } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import {
+  getActionProgressPercent,
+  groupActionsByStatus,
+  isActionOverdue as isPipelineActionOverdue,
+  sortActionsByDueDate,
+} from '@/lib/action-pipeline'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -30,6 +36,22 @@ type PortalAction = Pick<
   | 'visible_to_client'
 >
 
+const ACTION_PIPELINE_STATUS_LABELS = {
+  overdue_pipeline: 'Atrasadas',
+  ...ACTION_STATUS_LABELS,
+}
+
+const ACTION_PIPELINE_STATUS_COLORS = {
+  overdue_pipeline: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200',
+  ...ACTION_STATUS_COLORS,
+}
+
+interface PortalActionsPageProps {
+  searchParams?: {
+    view?: string
+  }
+}
+
 function getActionSortDate(action: PortalAction) {
   return action.due_date ?? '9999-12-31'
 }
@@ -39,7 +61,7 @@ function isActionOverdue(action: PortalAction) {
   return action.due_date < new Date().toISOString().slice(0, 10)
 }
 
-export default async function PortalActionsPage() {
+export default async function PortalActionsPage({ searchParams }: PortalActionsPageProps) {
   const session = await getSessionWithProfile()
   if (session.status === 'unauthenticated') redirect('/login')
   if (session.status === 'no_profile') redirect('/unauthorized?reason=no_profile')
@@ -96,6 +118,12 @@ export default async function PortalActionsPage() {
 
       return firstAction.title.localeCompare(secondAction.title, 'pt-BR')
     })
+  const view = searchParams?.view === 'pipeline' ? 'pipeline' : 'list'
+  const pipelineColumns = groupActionsByStatus(sortActionsByDueDate(actions)).map(column => ({
+    status: column.status,
+    label: ACTION_PIPELINE_STATUS_LABELS[column.status],
+    actions: column.actions,
+  }))
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -111,6 +139,22 @@ export default async function PortalActionsPage() {
         <p className="mt-1 text-sm text-neutral-500">
           Acompanhe apenas as ações que a equipe FAUS liberou para visualização externa.
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Link
+            href="/portal/acoes?view=list"
+            className={view === 'list' ? 'btn-primary' : 'btn-secondary'}
+          >
+            <Rows4 size={16} />
+            Lista
+          </Link>
+          <Link
+            href="/portal/acoes?view=pipeline"
+            className={view === 'pipeline' ? 'btn-primary' : 'btn-secondary'}
+          >
+            <Workflow size={16} />
+            Pipeline
+          </Link>
+        </div>
       </div>
 
       {actions.length === 0 ? (
@@ -122,6 +166,75 @@ export default async function PortalActionsPage() {
           <p className="mt-2 text-sm text-neutral-500">
             Quando houver ações compartilhadas pela equipe FAUS, elas aparecerão aqui.
           </p>
+        </div>
+      ) : view === 'pipeline' ? (
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-4">
+            {pipelineColumns.map(column => (
+              <div key={column.status} className="card flex w-[320px] shrink-0 flex-col p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className={cn('badge', ACTION_PIPELINE_STATUS_COLORS[column.status])}>
+                    {column.label}
+                  </span>
+                  <span className="text-xs text-neutral-400">{column.actions.length}</span>
+                </div>
+
+                <div className="mt-4 flex-1 space-y-3">
+                  {column.actions.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-neutral-200 px-4 py-6 text-center text-sm text-neutral-400">
+                      Nenhuma ação nesta coluna.
+                    </div>
+                  ) : (
+                    column.actions.map(action => {
+                      const overdue = isPipelineActionOverdue(action)
+                      const progressPercentage = getActionProgressPercent(action, [])
+
+                      return (
+                        <article key={action.id} className="rounded-2xl border border-neutral-200 bg-white p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className={cn('badge', ACTION_STATUS_COLORS[action.status])}>
+                              {overdue ? 'Atrasada' : ACTION_STATUS_LABELS[action.status]}
+                            </span>
+                            <span className={cn('badge', ACTION_PRIORITY_COLORS[action.priority])}>
+                              {ACTION_PRIORITY_LABELS[action.priority]}
+                            </span>
+                          </div>
+                          <h2 className="mt-3 text-sm font-semibold leading-snug text-neutral-900">
+                            {action.title}
+                          </h2>
+                          {action.description && (
+                            <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-neutral-500">
+                              {action.description}
+                            </p>
+                          )}
+                          <p className="mt-3 text-xs text-neutral-500">
+                            {projectNameMap.get(action.project_id) ?? 'Projeto vinculado'}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className={cn('badge', overdue ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200' : 'bg-neutral-100 text-neutral-600')}>
+                              {action.due_date ? formatDate(action.due_date) : 'Sem prazo'}
+                            </span>
+                          </div>
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                              <span>Andamento</span>
+                              <span>{progressPercentage}%</span>
+                            </div>
+                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                              <div
+                                className="h-full rounded-full bg-brand-600"
+                                style={{ width: `${progressPercentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

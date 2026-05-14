@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { KpiForm } from '@/components/kpis/KpiForm'
-import type { DiagnosisIndicator, Kpi, Profile, Project } from '@/types/database.types'
+import type { DiagnosisIndicator, Kpi, Profile, Project, UserRole } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Editar KPI' }
 
@@ -13,10 +13,12 @@ interface PageProps {
 
 type ProjectOption = Pick<Project, 'id' | 'project_name'>
 type ResponsibleOption = Pick<Profile, 'id' | 'full_name'>
+type ProjectPermissionLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
 type DiagnosisIndicatorOption = Pick<
   DiagnosisIndicator,
   'id' | 'project_id' | 'area' | 'indicator_name' | 'baseline_value' | 'reference_date'
 >
+const RESPONSIBLE_ROLES: UserRole[] = ['admin_faus', 'gestor_faus', 'consultor_faus']
 
 export default async function EditKpiPage({ params }: PageProps) {
   const session = await getSessionWithProfile()
@@ -37,17 +39,29 @@ export default async function EditKpiPage({ params }: PageProps) {
 
   if (!kpi) notFound()
 
+  const projectPermissionRes = await supabase
+    .from('projects')
+    .select('id, project_name, main_consultant_id')
+    .eq('id', kpi.project_id)
+    .single()
+
+  const projectPermission = (projectPermissionRes.data as ProjectPermissionLookup | null) ?? null
   const isAdmin = session.profile.role === 'admin_faus'
+  const isLeadConsultant =
+    session.profile.role === 'consultor_faus' &&
+    projectPermission?.main_consultant_id === session.profile.id
+
+  if (!isAdmin && !isLeadConsultant) redirect('/unauthorized?reason=forbidden')
 
   const [projectsRes, responsiblesRes, diagnosisIndicatorsRes] = await Promise.all([
     isAdmin
       ? supabase.from('projects').select('id, project_name').order('project_name')
-      : supabase.from('projects').select('id, project_name').eq('id', kpi.project_id),
+      : Promise.resolve({ data: projectPermission ? [projectPermission] : [] as ProjectOption[] | null }),
     isAdmin
       ? supabase
           .from('profiles')
           .select('id, full_name')
-          .in('role', ['admin_faus', 'consultor_faus'])
+          .in('role', RESPONSIBLE_ROLES)
           .eq('is_active', true)
           .order('full_name')
       : kpi.responsible_id && kpi.responsible_id !== session.profile.id
@@ -93,6 +107,7 @@ export default async function EditKpiPage({ params }: PageProps) {
         diagnosisFeatureEnabled={diagnosisFeatureEnabled}
         canChooseProject={isAdmin}
         canEditUnitOfMeasure={isAdmin}
+        canEditStructuralFields={isAdmin}
       />
     </div>
   )

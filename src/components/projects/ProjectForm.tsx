@@ -46,6 +46,7 @@ interface ProjectFormProps {
   consultants: ConsultantOption[]
   projectManagers: ProjectManagerOption[]
   isAdmin: boolean
+  canChooseProjectManager?: boolean
   currentUserId?: string
 }
 
@@ -71,6 +72,7 @@ export function ProjectForm({
   consultants,
   projectManagers,
   isAdmin,
+  canChooseProjectManager = isAdmin,
   currentUserId,
 }: ProjectFormProps) {
   const router = useRouter()
@@ -96,6 +98,7 @@ export function ProjectForm({
   const [errors, setErrors] = useState<FormErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const canEditProjectManager = mode === 'create' ? canChooseProjectManager : isAdmin
 
   const strategicOptions = useMemo(
     () => Object.entries(STRATEGIC_FOCUS_LABELS) as [StrategicFocus, string][],
@@ -132,7 +135,7 @@ export function ProjectForm({
     if (!clientId) nextErrors.client_id = 'Selecione o cliente vinculado.'
     if (!projectType) nextErrors.project_type = 'Selecione o tipo do projeto.'
     if (!branch) nextErrors.branch = 'Selecione a filial responsável.'
-    if (mode === 'create' && isAdmin && !projectManagerId) {
+    if (mode === 'create' && canChooseProjectManager && !projectManagerId) {
       nextErrors.project_manager_id = 'Selecione o gestor do projeto.'
     }
     if (!projectName.trim()) nextErrors.project_name = 'Informe o nome do projeto.'
@@ -216,7 +219,7 @@ export function ProjectForm({
           main_consultant_id: effectiveMainConsultantId,
           project_type: projectTypeValue,
           branch: branchValue,
-          project_manager_id: isAdmin ? projectManagerValue : null,
+          project_manager_id: canChooseProjectManager ? projectManagerValue : null,
           start_date: startDateValue,
           planned_end_date: plannedEndDateValue,
           status,
@@ -364,14 +367,14 @@ export function ProjectForm({
 
           <div className="md:col-span-2">
             <label htmlFor="project_manager_id" className="label">
-              Gestor do projeto {mode === 'create' && isAdmin ? '*' : ''}
+              Gestor do projeto {mode === 'create' && canChooseProjectManager ? '*' : ''}
             </label>
             <select
               id="project_manager_id"
               value={projectManagerId}
               onChange={event => setProjectManagerId(event.target.value)}
               className="input"
-              disabled={saving || !isAdmin}
+              disabled={saving || !canEditProjectManager}
             >
               <option value="">Não definido</option>
               {projectManagers.map(manager => (
@@ -380,7 +383,7 @@ export function ProjectForm({
                 </option>
               ))}
             </select>
-            {!isAdmin && (
+            {!canEditProjectManager && (
               <p className="mt-1 text-xs text-neutral-400">
                 Somente Admin FAUS pode alterar o gestor do projeto.
               </p>

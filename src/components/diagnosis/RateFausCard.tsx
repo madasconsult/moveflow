@@ -35,6 +35,7 @@ interface RateFausCardProps {
   featureEnabled: boolean
   summary: RateSummary | null
   canEdit: boolean
+  canReset?: boolean
 }
 
 export function RateFausCard({
@@ -43,6 +44,7 @@ export function RateFausCard({
   featureEnabled,
   summary,
   canEdit,
+  canReset = canEdit,
 }: RateFausCardProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -102,7 +104,7 @@ export function RateFausCard({
 
   async function handleActivate() {
     if (!canEdit) {
-      setError('Somente administradores podem ativar ou editar o Rate FAUS.')
+      setError('Você não tem permissão para ativar ou editar o Rate FAUS deste projeto.')
       return
     }
 
@@ -177,7 +179,7 @@ export function RateFausCard({
   }
 
   async function handleResetRate() {
-    if (!effectiveSummary || !canEdit) return
+    if (!effectiveSummary || !canReset) return
 
     setResetting(true)
     setError(null)
@@ -236,7 +238,7 @@ export function RateFausCard({
               <BarChart3 size={16} />
               Abrir Rate
             </Link>
-            {canEdit && (
+            {canReset && (
               <button
                 type="button"
                 className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
@@ -342,7 +344,7 @@ export function RateFausCard({
         <div className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4">
           {!canEdit && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Somente administradores podem ativar a primeira versão do Rate FAUS.
+              Apenas usuários autorizados podem ativar a primeira versão do Rate FAUS.
             </div>
           )}
           <div className="flex flex-wrap items-center gap-6">

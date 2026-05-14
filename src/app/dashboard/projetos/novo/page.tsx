@@ -24,11 +24,12 @@ export default async function NewProjectPage() {
   if (session.profile.role === 'gestor_faus') redirect('/unauthorized?reason=forbidden')
 
   const isAdmin = session.profile.role === 'admin_faus'
+  const canChooseProjectManager = isAdmin || session.profile.role === 'consultor_faus'
   const supabase = await createClient()
 
   const [clientsRes, consultantsRes, managersRes] = await Promise.all([
     supabase.from('clients').select('id, company_name').order('company_name'),
-    isAdmin
+    canChooseProjectManager
       ? supabase
           .from('profiles')
           .select('id, full_name')
@@ -69,6 +70,7 @@ export default async function NewProjectPage() {
         consultants={consultants}
         projectManagers={projectManagers}
         isAdmin={isAdmin}
+        canChooseProjectManager={canChooseProjectManager}
         currentUserId={session.profile.id}
       />
     </div>

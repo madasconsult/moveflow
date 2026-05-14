@@ -9,7 +9,7 @@ import { getActiveProjectContext } from '@/lib/active-project/server'
 import { buildDiaryMonthBuckets, formatDiaryDate, formatDiaryPeriod, isSameMonth } from '@/lib/diary-board'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
-import type { DiaryDeliverable, DiaryEntry, Profile } from '@/types/database.types'
+import type { DiaryDeliverable, DiaryEntry, Profile, Project } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Diário de Bordo' }
 
@@ -27,6 +27,7 @@ type DiaryEntryListItem = Pick<
 
 type DeliverableLookup = Pick<DiaryDeliverable, 'id' | 'diary_entry_id' | 'description' | 'position'>
 type ProfileLookup = Pick<Profile, 'id' | 'full_name'>
+type ProjectPermissionLookup = Pick<Project, 'id' | 'main_consultant_id'>
 
 function StatCard({
   label,
@@ -80,14 +81,21 @@ export default async function DiaryBoardPage() {
   }
 
   const supabase = await createClient()
-  const { data: entriesData } = await supabase
-    .from('diary_entries')
-    .select('id, project_id, title, start_date, end_date, faus_people, created_by, created_at')
-    .eq('project_id', activeProjectId)
-    .is('deleted_at', null)
-    .order('start_date', { ascending: false })
+  const [entriesRes, activeProjectRes] = await Promise.all([
+    supabase
+      .from('diary_entries')
+      .select('id, project_id, title, start_date, end_date, faus_people, created_by, created_at')
+      .eq('project_id', activeProjectId)
+      .is('deleted_at', null)
+      .order('start_date', { ascending: false }),
+    supabase
+      .from('projects')
+      .select('id, main_consultant_id')
+      .eq('id', activeProjectId)
+      .single(),
+  ])
 
-  const entries: DiaryEntryListItem[] = (entriesData as DiaryEntryListItem[] | null) ?? []
+  const entries: DiaryEntryListItem[] = (entriesRes.data as DiaryEntryListItem[] | null) ?? []
   const entryIds = entries.map(entry => entry.id)
 
   const deliverablesRes = entryIds.length > 0
@@ -128,6 +136,10 @@ export default async function DiaryBoardPage() {
     .reduce((total, entry) => total + entry.deliverable_count, 0)
   const totalDeliverables = rows.reduce((total, entry) => total + entry.deliverable_count, 0)
   const isAdmin = session.profile.role === 'admin_faus'
+  const activeProject = (activeProjectRes.data as ProjectPermissionLookup | null) ?? null
+  const canManageDiary =
+    isAdmin ||
+    (session.profile.role === 'consultor_faus' && activeProject?.main_consultant_id === session.profile.id)
 
   return (
     <div className="space-y-6">
@@ -138,10 +150,12 @@ export default async function DiaryBoardPage() {
             Registro de dedicação da FAUS no projeto ativo: {activeProjectContext.activeProject?.project_name}.
           </p>
         </div>
-        <Link href="/dashboard/diario-de-bordo/novo" className="btn-primary">
-          <Plus size={16} />
-          Registrar Dedicação
-        </Link>
+        {canManageDiary && (
+          <Link href="/dashboard/diario-de-bordo/novo" className="btn-primary">
+            <Plus size={16} />
+            Registrar Dedicação
+          </Link>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -174,10 +188,12 @@ export default async function DiaryBoardPage() {
             <p className="mt-1 max-w-md text-sm text-neutral-500">
               Nenhum registro encontrado para este projeto.
             </p>
-            <Link href="/dashboard/diario-de-bordo/novo" className="btn-primary mt-5">
-              <Plus size={16} />
-              Registrar primeira dedicação
-            </Link>
+            {canManageDiary && (
+              <Link href="/dashboard/diario-de-bordo/novo" className="btn-primary mt-5">
+                <Plus size={16} />
+                Registrar primeira dedicação
+              </Link>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -233,9 +249,11 @@ export default async function DiaryBoardPage() {
                         <Link href={`/dashboard/diario-de-bordo/${entry.id}`} className="btn-ghost">
                           Ver
                         </Link>
-                        <Link href={`/dashboard/diario-de-bordo/${entry.id}/editar`} className="btn-secondary">
-                          Editar
-                        </Link>
+                        {canManageDiary && (
+                          <Link href={`/dashboard/diario-de-bordo/${entry.id}/editar`} className="btn-secondary">
+                            Editar
+                          </Link>
+                        )}
                         {isAdmin && (
                           <DeleteDiaryEntryButton entryId={entry.id} />
                         )}

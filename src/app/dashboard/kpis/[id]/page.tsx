@@ -46,7 +46,7 @@ interface PageProps {
   searchParams?: { year?: string }
 }
 
-type ProjectLookup = Pick<Project, 'id' | 'project_name'>
+type ProjectLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
 type ResponsibleLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
 type DiagnosisIndicatorLookup = Pick<
   DiagnosisIndicator,
@@ -112,7 +112,7 @@ export default async function KpiDetailPage({ params, searchParams }: PageProps)
   if (!kpi) notFound()
 
   const [projectRes, responsibleRes, diagnosisIndicatorRes, targetPeriodsRes, recordRes, fspRes] = await Promise.all([
-    supabase.from('projects').select('id, project_name').eq('id', kpi.project_id).single(),
+    supabase.from('projects').select('id, project_name, main_consultant_id').eq('id', kpi.project_id).single(),
     kpi.responsible_id
       ? supabase.from('profiles').select('id, full_name, email').eq('id', kpi.responsible_id).single()
       : Promise.resolve({ data: null }),
@@ -197,6 +197,10 @@ export default async function KpiDetailPage({ params, searchParams }: PageProps)
   const editYearHref = firstEditablePeriod
     ? `/dashboard/kpis/metas/${firstEditablePeriod.id}/editar?year=${selectedYear}`
     : `/dashboard/kpis/${kpi.id}/periodos/novo?year=${selectedYear}`
+  const isAdmin = session.profile.role === 'admin_faus'
+  const canManageKpi =
+    isAdmin ||
+    (session.profile.role === 'consultor_faus' && project?.main_consultant_id === session.profile.id)
 
   return (
     <div className="space-y-6">
@@ -220,10 +224,12 @@ export default async function KpiDetailPage({ params, searchParams }: PageProps)
             <BarChart3 size={16} />
             Dashboard do projeto
           </Link>
-          <Link href={`/dashboard/kpis/${kpi.id}/editar`} className="btn-primary">
-            <Pencil size={16} />
-            Editar KPI
-          </Link>
+          {canManageKpi && (
+            <Link href={`/dashboard/kpis/${kpi.id}/editar`} className="btn-primary">
+              <Pencil size={16} />
+              Editar KPI
+            </Link>
+          )}
         </div>
       </div>
 
@@ -327,10 +333,12 @@ export default async function KpiDetailPage({ params, searchParams }: PageProps)
                       {year}
                     </Link>
                   ))}
-                <Link href={editYearHref} className="btn-secondary">
-                  <CalendarRange size={16} />
-                  {firstEditablePeriod ? 'Editar metas do ano' : 'Planejar metas do ano'}
-                </Link>
+                {isAdmin && (
+                  <Link href={editYearHref} className="btn-secondary">
+                    <CalendarRange size={16} />
+                    {firstEditablePeriod ? 'Editar metas do ano' : 'Planejar metas do ano'}
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -409,20 +417,24 @@ export default async function KpiDetailPage({ params, searchParams }: PageProps)
                                 <p className="text-[11px] text-neutral-500">
                                   {PERFORMANCE_STATUS_LABELS[record.calculated_status]}
                                 </p>
-                                <Link
-                                  href={`/dashboard/fsps/novo?sourceType=kpi_period&recordId=${record.id}`}
-                                  className="inline-block text-[11px] font-medium text-brand-700 hover:text-brand-800"
-                                >
-                                  Abrir FSP
-                                </Link>
+                                {canManageKpi && (
+                                  <Link
+                                    href={`/dashboard/fsps/novo?sourceType=kpi_period&recordId=${record.id}`}
+                                    className="inline-block text-[11px] font-medium text-brand-700 hover:text-brand-800"
+                                  >
+                                    Abrir FSP
+                                  </Link>
+                                )}
                               </div>
-                            ) : (
+                            ) : canManageKpi ? (
                               <Link
                                 href={`/dashboard/kpis/periodos/${period.id}/apuracao`}
                                 className="mt-1 inline-block text-[11px] font-medium text-brand-700 hover:text-brand-800"
                               >
                                 Apurar
                               </Link>
+                            ) : (
+                              <p className="mt-1 text-[11px] text-neutral-400">Sem apuração</p>
                             )}
                           </div>
                         ) : (
@@ -580,10 +592,12 @@ export default async function KpiDetailPage({ params, searchParams }: PageProps)
                               {FSP_STATUS_LABELS[fspByRecord.get(record.id)!.status]}
                             </span>
                           </>
-                        ) : (
+                        ) : canManageKpi ? (
                           <Link href={`/dashboard/fsps/novo?sourceType=kpi_period&recordId=${record.id}`} className="text-sm font-medium text-brand-700 hover:text-brand-800">
                             Abrir FSP para esta apuração
                           </Link>
+                        ) : (
+                          <span className="text-sm text-neutral-400">Sem FSP relacionada</span>
                         )}
                       </div>
                     </div>

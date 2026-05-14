@@ -35,6 +35,7 @@ type KpiListItem = Pick<
 >
 
 type ProjectLookup = Pick<Project, 'id' | 'project_name'>
+type ProjectPermissionLookup = Pick<Project, 'id' | 'main_consultant_id'>
 type ResponsibleLookup = Pick<Profile, 'id' | 'full_name'>
 type DiagnosisLookup = Pick<DiagnosisIndicator, 'id' | 'unit_of_measure'>
 
@@ -66,13 +67,24 @@ export default async function KpisPage() {
   }
 
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('kpis')
-    .select('id, project_id, kpi_name, responsible_id, diagnosis_indicator_id, current_value, target_value, unit_of_measure, status, trend, visible_to_client, updated_at')
-    .eq('project_id', activeProjectId)
-    .order('updated_at', { ascending: false })
+  const [kpisRes, activeProjectRes] = await Promise.all([
+    supabase
+      .from('kpis')
+      .select('id, project_id, kpi_name, responsible_id, diagnosis_indicator_id, current_value, target_value, unit_of_measure, status, trend, visible_to_client, updated_at')
+      .eq('project_id', activeProjectId)
+      .order('updated_at', { ascending: false }),
+    supabase
+      .from('projects')
+      .select('id, main_consultant_id')
+      .eq('id', activeProjectId)
+      .single(),
+  ])
 
-  const kpis: KpiListItem[] = (data as KpiListItem[] | null) ?? []
+  const kpis: KpiListItem[] = (kpisRes.data as KpiListItem[] | null) ?? []
+  const activeProject = (activeProjectRes.data as ProjectPermissionLookup | null) ?? null
+  const canManageKpis =
+    session.profile.role === 'admin_faus' ||
+    (session.profile.role === 'consultor_faus' && activeProject?.main_consultant_id === session.profile.id)
   const projectIds = Array.from(new Set(kpis.map(kpi => kpi.project_id)))
   const responsibleIds = Array.from(
     new Set(kpis.map(kpi => kpi.responsible_id).filter(Boolean) as string[])
@@ -112,7 +124,7 @@ export default async function KpisPage() {
             Acompanhe indicadores do projeto ativo: {activeProjectContext.activeProject?.project_name}.
           </p>
         </div>
-        {session.profile.role === 'admin_faus' && (
+        {canManageKpis && (
           <Link href="/dashboard/kpis/novo" className="btn-primary">
             <Plus size={16} />
             Novo KPI
@@ -128,7 +140,7 @@ export default async function KpisPage() {
             <p className="mt-1 max-w-md text-sm text-neutral-500">
               Nenhum registro encontrado para este projeto.
             </p>
-            {session.profile.role === 'admin_faus' && (
+            {canManageKpis && (
               <Link href="/dashboard/kpis/novo" className="btn-primary mt-5">
                 <Plus size={16} />
                 Criar primeiro KPI
@@ -212,9 +224,11 @@ export default async function KpisPage() {
                         <Link href={`/dashboard/kpis/${kpi.id}`} className="btn-ghost">
                           Ver
                         </Link>
-                        <Link href={`/dashboard/kpis/${kpi.id}/editar`} className="btn-secondary">
-                          Editar
-                        </Link>
+                        {canManageKpis && (
+                          <Link href={`/dashboard/kpis/${kpi.id}/editar`} className="btn-secondary">
+                            Editar
+                          </Link>
+                        )}
                       </div>
                     </td>
                   </tr>

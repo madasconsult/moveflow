@@ -427,8 +427,7 @@ export function RateAssessmentWorkspace({
 
       {!canEdit && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          O Rate FAUS está em modo somente leitura para consultores. Apenas administradores podem ativar,
-          editar versões e salvar avaliações.
+          O Rate FAUS está em modo somente leitura para este perfil neste projeto.
         </div>
       )}
 

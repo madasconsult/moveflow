@@ -17,7 +17,7 @@ interface PageProps {
   params: { id: string }
 }
 
-type ProjectLookup = Pick<Project, 'id' | 'project_name'>
+type ProjectLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
 
 export default async function ProjectDiagnosisRatePage({ params }: PageProps) {
   const session = await getSessionWithProfile()
@@ -26,19 +26,21 @@ export default async function ProjectDiagnosisRatePage({ params }: PageProps) {
   if (session.status === 'no_profile') redirect('/unauthorized?reason=no_profile')
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
   if (session.profile.role === 'cliente') redirect('/portal')
-  const canEdit = session.profile.role === 'admin_faus'
 
   const supabase = await createClient()
 
   const { data: projectData } = await supabase
     .from('projects')
-    .select('id, project_name')
+    .select('id, project_name, main_consultant_id')
     .eq('id', params.id)
     .single()
 
   const project = (projectData as ProjectLookup | null) ?? null
 
   if (!project) notFound()
+  const canEdit =
+    session.profile.role === 'admin_faus' ||
+    (session.profile.role === 'consultor_faus' && project.main_consultant_id === session.profile.id)
 
   const { data: diagnosisData } = await supabase
     .from('project_diagnoses')

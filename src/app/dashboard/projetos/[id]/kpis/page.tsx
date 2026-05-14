@@ -28,7 +28,7 @@ interface PageProps {
   params: { id: string }
 }
 
-type ProjectLookup = Pick<Project, 'id' | 'project_name'>
+type ProjectLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
 type KpiLookup = Pick<
   Kpi,
   | 'id'
@@ -69,12 +69,15 @@ export default async function ProjectKpiDashboardPage({ params }: PageProps) {
   const supabase = await createClient()
   const { data: projectData } = await supabase
     .from('projects')
-    .select('id, project_name')
+    .select('id, project_name, main_consultant_id')
     .eq('id', params.id)
     .single()
 
   const project = (projectData as ProjectLookup | null) ?? null
   if (!project) notFound()
+  const canManageKpis =
+    session.profile.role === 'admin_faus' ||
+    (session.profile.role === 'consultor_faus' && project.main_consultant_id === session.profile.id)
 
   const { data: kpisData } = await supabase
     .from('kpis')
@@ -167,7 +170,7 @@ export default async function ProjectKpiDashboardPage({ params }: PageProps) {
           <Link href={`/dashboard/projetos/${project.id}`} className="btn-secondary">
             Voltar ao projeto
           </Link>
-          {session.profile.role === 'admin_faus' && (
+          {canManageKpis && (
             <Link href="/dashboard/kpis/novo" className="btn-primary">
               Novo KPI
             </Link>

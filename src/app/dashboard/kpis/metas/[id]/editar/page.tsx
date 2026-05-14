@@ -34,6 +34,7 @@ export default async function EditKpiTargetPeriodPage({ params, searchParams }: 
   if (session.status === 'no_profile') redirect('/unauthorized?reason=no_profile')
   if (session.status === 'inactive') redirect('/unauthorized?reason=inactive')
   if (session.profile.role === 'cliente') redirect('/portal')
+  if (session.profile.role !== 'admin_faus') redirect('/unauthorized?reason=forbidden')
 
   const supabase = await createClient()
   const { data: periodData } = await supabase

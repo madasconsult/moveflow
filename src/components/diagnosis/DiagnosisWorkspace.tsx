@@ -39,6 +39,7 @@ interface DiagnosisWorkspaceProps {
   responsibles: ResponsibleOption[]
   rateFeatureEnabled: boolean
   isAdmin: boolean
+  canEdit: boolean
   rateSummary: {
     assessment: RateAssessment
     latestVersion: RateAssessmentVersion | null
@@ -64,6 +65,7 @@ export function DiagnosisWorkspace({
   responsibles,
   rateFeatureEnabled,
   isAdmin,
+  canEdit,
   rateSummary,
 }: DiagnosisWorkspaceProps) {
   const router = useRouter()
@@ -319,7 +321,7 @@ export function DiagnosisWorkspace({
               className="input"
               value={startDate}
               onChange={event => setStartDate(event.target.value)}
-              disabled={diagnosisSaving}
+            disabled={diagnosisSaving || !canEdit}
             />
           </div>
 
@@ -331,7 +333,7 @@ export function DiagnosisWorkspace({
               className="input"
               value={endDate}
               onChange={event => setEndDate(event.target.value)}
-              disabled={diagnosisSaving}
+            disabled={diagnosisSaving || !canEdit}
             />
           </div>
 
@@ -342,7 +344,7 @@ export function DiagnosisWorkspace({
               className="input"
               value={ownerId}
               onChange={event => setOwnerId(event.target.value)}
-              disabled={diagnosisSaving}
+              disabled={diagnosisSaving || !canEdit}
             >
               <option value="">Não definido</option>
               {responsibles.map(responsible => (
@@ -360,7 +362,7 @@ export function DiagnosisWorkspace({
               className="input"
               value={status}
               onChange={event => setStatus(event.target.value as DiagnosisStatus)}
-              disabled={diagnosisSaving}
+              disabled={diagnosisSaving || !canEdit}
             >
               {statusOptions.map(([value, label]) => (
                 <option key={value} value={value}>
@@ -377,7 +379,7 @@ export function DiagnosisWorkspace({
               className="input min-h-28"
               value={executiveSummary}
               onChange={event => setExecutiveSummary(event.target.value)}
-              disabled={diagnosisSaving}
+              disabled={diagnosisSaving || !canEdit}
             />
           </div>
 
@@ -388,7 +390,7 @@ export function DiagnosisWorkspace({
               className="input min-h-28"
               value={keyFindings}
               onChange={event => setKeyFindings(event.target.value)}
-              disabled={diagnosisSaving}
+              disabled={diagnosisSaving || !canEdit}
             />
           </div>
 
@@ -399,7 +401,7 @@ export function DiagnosisWorkspace({
               className="input min-h-28"
               value={initialHypotheses}
               onChange={event => setInitialHypotheses(event.target.value)}
-              disabled={diagnosisSaving}
+              disabled={diagnosisSaving || !canEdit}
             />
           </div>
         </div>
@@ -411,7 +413,7 @@ export function DiagnosisWorkspace({
               className="mt-1 h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
               checked={visibleToClient}
               onChange={event => setVisibleToClient(event.target.checked)}
-              disabled={diagnosisSaving}
+              disabled={diagnosisSaving || !canEdit}
             />
             <span>
               <span className="block text-sm font-medium text-neutral-900">
@@ -434,7 +436,7 @@ export function DiagnosisWorkspace({
         )}
 
         <div className="flex items-center justify-end gap-3">
-          <button type="submit" className="btn-primary" disabled={diagnosisSaving}>
+          <button type="submit" className="btn-primary" disabled={diagnosisSaving || !canEdit}>
             {diagnosisSaving ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
@@ -454,7 +456,8 @@ export function DiagnosisWorkspace({
         projectId={project.id}
         diagnosisId={diagnosisId}
         featureEnabled={rateFeatureEnabled}
-        canEdit={isAdmin}
+        canEdit={canEdit}
+        canReset={isAdmin}
         summary={rateSummary}
       />
 
@@ -482,7 +485,7 @@ export function DiagnosisWorkspace({
                 className="input"
                 value={area}
                 onChange={event => setArea(event.target.value)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               >
                 <option value="">Selecione</option>
                 {DIAGNOSIS_AREA_OPTIONS.map(option => (
@@ -501,7 +504,7 @@ export function DiagnosisWorkspace({
                 className="input"
                 value={indicatorName}
                 onChange={event => setIndicatorName(event.target.value)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               />
               {indicatorErrors.indicator_name && <p className="mt-1 text-xs text-red-600">{indicatorErrors.indicator_name}</p>}
             </div>
@@ -513,7 +516,7 @@ export function DiagnosisWorkspace({
                 className="input"
                 value={unitOfMeasure}
                 onChange={event => setUnitOfMeasure(event.target.value)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               >
                 <option value="">Sem unidade</option>
                 {DIAGNOSIS_UNIT_OPTIONS.map(option => (
@@ -533,7 +536,7 @@ export function DiagnosisWorkspace({
                 className="input"
                 value={baselineValue}
                 onChange={event => setBaselineValue(event.target.value)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               />
             </div>
 
@@ -545,7 +548,7 @@ export function DiagnosisWorkspace({
                 className="input"
                 value={referenceDate}
                 onChange={event => setReferenceDate(event.target.value)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               />
             </div>
 
@@ -556,7 +559,7 @@ export function DiagnosisWorkspace({
                 className="input"
                 value={priority}
                 onChange={event => setPriority(event.target.value as ActionPriority)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               >
                 {priorityOptions.map(([value, label]) => (
                   <option key={value} value={value}>
@@ -573,7 +576,7 @@ export function DiagnosisWorkspace({
                 className="input min-h-24"
                 value={rationale}
                 onChange={event => setRationale(event.target.value)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               />
             </div>
 
@@ -584,7 +587,7 @@ export function DiagnosisWorkspace({
                 className="input min-h-24"
                 value={indicatorNotes}
                 onChange={event => setIndicatorNotes(event.target.value)}
-                disabled={indicatorSaving || !diagnosisId}
+                disabled={indicatorSaving || !diagnosisId || !canEdit}
               />
             </div>
           </div>
@@ -595,7 +598,7 @@ export function DiagnosisWorkspace({
               className="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
               checked={isActive}
               onChange={event => setIsActive(event.target.checked)}
-              disabled={indicatorSaving || !diagnosisId}
+              disabled={indicatorSaving || !diagnosisId || !canEdit}
             />
             Indicador ativo
           </label>
@@ -612,7 +615,7 @@ export function DiagnosisWorkspace({
                 Cancelar edição
               </button>
             )}
-            <button type="submit" className="btn-primary" disabled={indicatorSaving || !diagnosisId}>
+            <button type="submit" className="btn-primary" disabled={indicatorSaving || !diagnosisId || !canEdit}>
               {indicatorSaving ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
@@ -673,13 +676,17 @@ export function DiagnosisWorkspace({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        className="btn-ghost"
-                        onClick={() => startEditingIndicator(indicator)}
-                      >
-                        Editar
-                      </button>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={() => startEditingIndicator(indicator)}
+                        >
+                          Editar
+                        </button>
+                      ) : (
+                        <span className="text-xs text-neutral-400">Somente leitura</span>
+                      )}
                     </td>
                   </tr>
                 ))
