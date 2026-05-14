@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import type {
+  FausBranch,
   UserRole,
   ClientStatus,
   ProjectStatus,
@@ -39,6 +40,13 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   gestor_faus:     'Gestor FAUS',
   consultor_faus:  'Consultor FAUS',
   cliente:         'Cliente',
+}
+
+export const FAUS_BRANCH_LABELS: Record<FausBranch, string> = {
+  matriz: 'Matriz',
+  mg: 'MG',
+  ne: 'NE',
+  sao_paulo_capital: 'São Paulo - Capital',
 }
 
 export const INTERNAL_ROLES: UserRole[] = ['admin_faus', 'gestor_faus', 'consultor_faus']

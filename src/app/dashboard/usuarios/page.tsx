@@ -11,8 +11,13 @@ export const metadata: Metadata = { title: 'Usuários' }
 
 type UserRow = Pick<
   Profile,
-  'id' | 'full_name' | 'email' | 'role' | 'is_active' | 'created_at'
+  'id' | 'full_name' | 'email' | 'role' | 'branch' | 'client_id' | 'is_active' | 'created_at'
 >
+
+interface ClientOption {
+  id: string
+  company_name: string
+}
 
 export default async function UsersPage() {
   const session = await getSessionWithProfile()
@@ -23,13 +28,22 @@ export default async function UsersPage() {
   if (session.profile.role !== 'admin_faus') redirect('/unauthorized?reason=forbidden')
 
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, role, is_active, created_at')
-    .order('created_at', { ascending: false })
+  const [{ data }, { data: clientsData }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, email, role, branch, client_id, is_active, created_at')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('clients')
+      .select('id, company_name')
+      .order('company_name', { ascending: true }),
+  ])
 
   const users = (data as UserRow[] | null) ?? []
+  const clients = (clientsData as ClientOption[] | null) ?? []
   const activeUsers = users.filter(user => user.is_active).length
+  const permittedRoles = [...(['admin_faus', 'consultor_faus', 'gestor_faus', 'cliente'] as const)]
+    .sort((firstRole, secondRole) => ROLE_LABELS[firstRole].localeCompare(ROLE_LABELS[secondRole], 'pt-BR'))
 
   return (
     <div className="space-y-6">
@@ -62,14 +76,14 @@ export default async function UsersPage() {
         <div className="card p-5">
           <p className="text-sm font-semibold text-neutral-900">Perfis permitidos</p>
           <div className="mt-3 space-y-2 text-sm text-neutral-700">
-            <p>{ROLE_LABELS.admin_faus}</p>
-            <p>{ROLE_LABELS.consultor_faus}</p>
-            <p>{ROLE_LABELS.cliente}</p>
+            {permittedRoles.map(role => (
+              <p key={role}>{ROLE_LABELS[role]}</p>
+            ))}
           </div>
         </div>
       </div>
 
-      <UsersManagementTable users={users} />
+      <UsersManagementTable users={users} clients={clients} />
     </div>
   )
 }
