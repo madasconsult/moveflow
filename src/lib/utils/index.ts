@@ -7,6 +7,7 @@ import type {
   ProjectStatus,
   ProjectPhase,
   ProjectTypeEnum,
+  ProjectSpecialty,
   ActionStatus,
   ActionPriority,
   ActionClassification,
@@ -54,6 +55,20 @@ export const PROJECT_TYPE_LABELS: Record<ProjectTypeEnum, string> = {
   consultoria: 'Consultoria',
   inteligencia_de_dados: 'Inteligência de Dados',
   tms_roteirizador: 'TMS/Roteirizador',
+  wms: 'WMS',
+}
+
+export const PROJECT_SPECIALTY_LABELS: Record<ProjectSpecialty, string> = {
+  armazem: 'Armazém',
+  comercial: 'Comercial',
+  compras: 'Compras',
+  gestao: 'Gestão',
+  inteligencia_de_dados: 'Inteligência de Dados',
+  mapeamento_de_processos: 'Mapeamento de Processos',
+  multidisciplinar: 'Multidisciplinar',
+  planejamento: 'Planejamento',
+  tms_roteirizador: 'TMS/Roteirizador',
+  transportes: 'Transportes',
   wms: 'WMS',
 }
 

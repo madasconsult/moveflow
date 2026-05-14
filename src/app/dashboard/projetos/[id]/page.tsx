@@ -6,6 +6,7 @@ import { RateAxisLineChart } from '@/components/diagnosis/RateAxisLineChart'
 import { RateGauge } from '@/components/diagnosis/RateGauge'
 import { RateRadarChart } from '@/components/diagnosis/RateRadarChart'
 import { ProjectKpiExecutiveCard } from '@/components/projects/ProjectKpiExecutiveCard'
+import { ProjectSupportTeamManager } from '@/components/projects/ProjectSupportTeamManager'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import {
@@ -44,6 +45,7 @@ import type {
   Profile,
   Project,
   ProjectDiagnosis,
+  ProjectMember,
   RateAssessment,
   RateAssessmentItem,
   RateAssessmentVersion,
@@ -59,6 +61,11 @@ interface PageProps {
 type ClientLookup = Pick<Client, 'id' | 'company_name'>
 type ConsultantLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
 type ProjectManagerLookup = Pick<Profile, 'id' | 'full_name'>
+type SupportProfileLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
+type SupportMemberLookup = Pick<
+  ProjectMember,
+  'id' | 'project_id' | 'user_id' | 'role_in_project' | 'specialty' | 'added_by' | 'created_at'
+>
 type DiagnosisOwnerLookup = Pick<Profile, 'id' | 'full_name'>
 type ActionLookup = Pick<Action, 'id' | 'status'>
 type KpiLookup = Pick<
@@ -118,7 +125,16 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
 
   if (!project) notFound()
 
-  const [clientRes, consultantRes, managerRes, diagnosisRes, actionsRes, kpisRes] = await Promise.all([
+  const [
+    clientRes,
+    consultantRes,
+    managerRes,
+    supportMembersRes,
+    eligibleSupportUsersRes,
+    diagnosisRes,
+    actionsRes,
+    kpisRes,
+  ] = await Promise.all([
     supabase
       .from('clients')
       .select('id, company_name')
@@ -139,6 +155,17 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
           .single()
       : Promise.resolve({ data: null }),
     supabase
+      .from('project_members')
+      .select('id, project_id, user_id, role_in_project, specialty, added_by, created_at')
+      .eq('project_id', project.id)
+      .eq('role_in_project', 'support'),
+    supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('role', ['admin_faus', 'gestor_faus', 'consultor_faus'])
+      .eq('is_active', true)
+      .order('full_name'),
+    supabase
       .from('project_diagnoses')
       .select('*')
       .eq('project_id', project.id)
@@ -157,9 +184,33 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const client = (clientRes.data as ClientLookup | null) ?? null
   const consultant = (consultantRes.data as ConsultantLookup | null) ?? null
   const projectManager = (managerRes.data as ProjectManagerLookup | null) ?? null
+  const supportMembers = (supportMembersRes.data as SupportMemberLookup[] | null) ?? []
+  const eligibleSupportUsers = (eligibleSupportUsersRes.data as SupportProfileLookup[] | null) ?? []
   const diagnosis = (diagnosisRes.data as ProjectDiagnosis | null) ?? null
   const projectActions = (actionsRes.data as ActionLookup[] | null) ?? []
   const kpis = (kpisRes.data as KpiLookup[] | null) ?? []
+
+  const supportUserIds = Array.from(new Set(supportMembers.map(member => member.user_id)))
+  const supportProfilesRes =
+    supportUserIds.length > 0
+      ? await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', supportUserIds)
+      : { data: [] as SupportProfileLookup[] | null }
+  const supportProfiles = (supportProfilesRes.data as SupportProfileLookup[] | null) ?? []
+  const supportProfileMap = new Map(supportProfiles.map(profile => [profile.id, profile]))
+  const supportTeam = supportMembers
+    .map(member => ({
+      ...member,
+      profile: supportProfileMap.get(member.user_id) ?? null,
+    }))
+    .sort((firstMember, secondMember) =>
+      (firstMember.profile?.full_name ?? 'Usuário vinculado').localeCompare(
+        secondMember.profile?.full_name ?? 'Usuário vinculado',
+        'pt-BR'
+      )
+    )
 
   const [diagnosisIndicatorsRes, diagnosisOwnerRes, periodsRes, recordsRes, rateAssessmentRes] = await Promise.all([
     diagnosis
@@ -399,6 +450,15 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
           </div>
         </div>
       </div>
+
+      <ProjectSupportTeamManager
+        projectId={project.id}
+        mainConsultantId={project.main_consultant_id}
+        currentUserId={session.profile.id}
+        canManage={session.profile.role === 'admin_faus'}
+        supportMembers={supportTeam}
+        eligibleUsers={eligibleSupportUsers}
+      />
 
       <div className="card p-6 space-y-4">
         <h2 className="text-sm font-semibold text-neutral-900">Bloco estratégico</h2>
