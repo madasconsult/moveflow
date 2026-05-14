@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createMiddlewareClient } from '@/lib/supabase/middleware'
 import type { Profile } from '@/types/database.types'
+import { canAccessDashboard, canAccessPortal, canManageUsers, isInternalRole } from '@/lib/utils'
 
 // Rotas que qualquer pessoa pode acessar sem estar autenticado
 const PUBLIC_ROUTES = ['/login', '/unauthorized']
@@ -8,7 +9,7 @@ const PUBLIC_ROUTES = ['/login', '/unauthorized']
 // Rotas exclusivas do portal do cliente
 const PORTAL_ROUTES = ['/portal']
 
-// Rotas do painel interno (admin + consultor)
+// Rotas do painel interno (perfis internos FAUS)
 const DASHBOARD_ROUTES = ['/dashboard']
 
 // Rotas exclusivas de admin
@@ -82,25 +83,25 @@ export async function middleware(request: NextRequest) {
   // ── 5. Proteção de rotas por perfil ─────────────────────────────────────
 
   // Cliente tentando acessar o painel interno → redireciona para portal
-  if (isDashboardRoute && role === 'cliente') {
+  if (isDashboardRoute && !canAccessDashboard(role)) {
     return NextResponse.redirect(new URL('/portal', request.url))
   }
 
-  // Admin/consultor tentando acessar o portal do cliente → redireciona para dashboard
-  if (isPortalRoute && (role === 'admin_faus' || role === 'consultor_faus')) {
+  // Perfis internos tentando acessar o portal do cliente → redireciona para dashboard
+  if (isPortalRoute && isInternalRole(role)) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   // ── 6. Proteção de rotas exclusivas de admin ─────────────────────────────
   const isAdminOnlyRoute = ADMIN_ONLY_ROUTES.some(r => pathname.startsWith(r))
 
-  if (isAdminOnlyRoute && role !== 'admin_faus') {
+  if (isAdminOnlyRoute && !canManageUsers(role)) {
     return NextResponse.redirect(buildUnauthorizedUrl(request, 'forbidden'))
   }
 
   // ── 7. Rota raiz ─────────────────────────────────────────────────────────
   if (pathname === '/') {
-    const home = role === 'cliente' ? '/portal' : '/dashboard'
+    const home = canAccessPortal(role) ? '/portal' : '/dashboard'
     return NextResponse.redirect(new URL(home, request.url))
   }
 
@@ -122,7 +123,7 @@ async function redirectToHome(request: NextRequest, supabase: ReturnType<typeof 
     return NextResponse.redirect(buildUnauthorizedUrl(request, 'inactive'))
   }
 
-  const home = profile?.role === 'cliente' ? '/portal' : '/dashboard'
+  const home = canAccessPortal(profile.role) ? '/portal' : '/dashboard'
   return NextResponse.redirect(new URL(home, request.url))
 }
 

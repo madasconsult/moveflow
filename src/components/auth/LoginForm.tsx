@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { canAccessPortal, cn } from '@/lib/utils'
 import type { Profile, UserRole } from '@/types/database.types'
 
 type LoginProfile = Pick<Profile, 'role' | 'is_active'>
 
 function getHomeRouteForRole(role: UserRole) {
-  return role === 'cliente' ? '/portal' : '/dashboard'
+  return canAccessPortal(role) ? '/portal' : '/dashboard'
 }
 
 export function LoginForm() {

@@ -1,4 +1,5 @@
 import type { UserRole } from '@/types/database.types'
+import { INTERNAL_ROLES } from '@/lib/utils'
 
 export interface NavItem {
   label: string
@@ -8,73 +9,73 @@ export interface NavItem {
   badge?: string     // badge opcional (ex: "Em breve")
 }
 
-// Navegação do painel interno (admin + consultor)
+// Navegação do painel interno (perfis internos FAUS)
 export const DASHBOARD_NAV_ITEMS: NavItem[] = [
   {
     label: 'Dashboard',
     href:  '/dashboard',
     icon:  'LayoutDashboard',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Clientes',
     href:  '/dashboard/clientes',
     icon:  'Building2',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Projetos',
     href:  '/dashboard/projetos',
     icon:  'FolderKanban',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Ações',
     href:  '/dashboard/acoes',
     icon:  'CheckSquare',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Reuniões',
     href:  '/dashboard/reunioes',
     icon:  'CalendarDays',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Diário de Bordo',
     href:  '/dashboard/diario-de-bordo',
     icon:  'FileText',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Relatórios',
     href:  '/dashboard/relatorios',
     icon:  'FileText',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Documentos',
     href:  '/dashboard/documentos',
     icon:  'FileText',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'KPIs',
     href:  '/dashboard/kpis',
     icon:  'TrendingUp',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'FSPs',
     href:  '/dashboard/fsps',
     icon:  'SearchCheck',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
   {
     label: 'Timeline',
     href:  '/dashboard/timeline',
     icon:  'History',
-    roles: ['admin_faus', 'consultor_faus'],
+    roles: INTERNAL_ROLES,
   },
 ]
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Profile } from '@/types/database.types'
+import { canAccessPortal, isAdminRole, isInternalRole } from '@/lib/utils'
 
 interface AuthState {
   profile: Profile | null
@@ -22,5 +23,6 @@ export const useAuthStore = create<AuthState>(set => ({
 
 // Seletores convenientes
 export const useProfile  = () => useAuthStore(s => s.profile)
-export const useIsAdmin  = () => useAuthStore(s => s.profile?.role === 'admin_faus')
-export const useIsClient = () => useAuthStore(s => s.profile?.role === 'cliente')
+export const useIsAdmin  = () => useAuthStore(s => s.profile ? isAdminRole(s.profile.role) : false)
+export const useIsInternal = () => useAuthStore(s => s.profile ? isInternalRole(s.profile.role) : false)
+export const useIsClient = () => useAuthStore(s => s.profile ? canAccessPortal(s.profile.role) : false)

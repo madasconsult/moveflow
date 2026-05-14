@@ -21,7 +21,8 @@ export type Database = {
           id: string
           full_name: string
           email: string
-          role: 'admin_faus' | 'consultor_faus' | 'cliente'
+          role: UserRole
+          branch: FausBranch | null
           avatar_url: string | null
           client_id: string | null
           is_active: boolean
@@ -32,7 +33,8 @@ export type Database = {
           id: string
           full_name: string
           email: string
-          role?: 'admin_faus' | 'consultor_faus' | 'cliente'
+          role?: UserRole
+          branch?: FausBranch | null
           avatar_url?: string | null
           client_id?: string | null
           is_active?: boolean
@@ -43,7 +45,8 @@ export type Database = {
           id?: string
           full_name?: string
           email?: string
-          role?: 'admin_faus' | 'consultor_faus' | 'cliente'
+          role?: UserRole
+          branch?: FausBranch | null
           avatar_url?: string | null
           client_id?: string | null
           is_active?: boolean
@@ -98,6 +101,9 @@ export type Database = {
           project_name: string
           short_description: string | null
           main_consultant_id: string | null
+          project_type: ProjectTypeEnum | null
+          branch: FausBranch | null
+          project_manager_id: string | null
           start_date: string | null
           planned_end_date: string | null
           status: ProjectStatus
@@ -118,6 +124,9 @@ export type Database = {
           project_name: string
           short_description?: string | null
           main_consultant_id?: string | null
+          project_type?: ProjectTypeEnum | null
+          branch?: FausBranch | null
+          project_manager_id?: string | null
           start_date?: string | null
           planned_end_date?: string | null
           status?: ProjectStatus
@@ -134,6 +143,9 @@ export type Database = {
           project_name?: string
           short_description?: string | null
           main_consultant_id?: string | null
+          project_type?: ProjectTypeEnum | null
+          branch?: FausBranch | null
+          project_manager_id?: string | null
           start_date?: string | null
           planned_end_date?: string | null
           status?: ProjectStatus
@@ -926,6 +938,7 @@ export type Database = {
           project_id: string
           user_id: string
           role_in_project: ProjectMemberRole
+          specialty: ProjectSpecialty | null
           added_by: string | null
           created_at: string
         }
@@ -934,16 +947,21 @@ export type Database = {
           project_id: string
           user_id: string
           role_in_project: ProjectMemberRole
+          specialty?: ProjectSpecialty | null
           added_by?: string | null
           created_at?: string
         }
         Update: {
           role_in_project?: ProjectMemberRole
+          specialty?: ProjectSpecialty | null
         }
       }
     }
     Enums: {
       user_role: UserRole
+      faus_branch: FausBranch
+      project_type_enum: ProjectTypeEnum
+      project_specialty: ProjectSpecialty
       client_status: ClientStatus
       project_status: ProjectStatus
       project_phase: ProjectPhase
@@ -1010,7 +1028,10 @@ export type TimelineEvent   = Tables<'timeline_events'>
 export type ProjectMember   = Tables<'project_members'>
 
 // Enums como tipos TypeScript
-export type UserRole             = 'admin_faus' | 'consultor_faus' | 'cliente'
+export type UserRole             = 'admin_faus' | 'gestor_faus' | 'consultor_faus' | 'cliente'
+export type FausBranch           = 'matriz' | 'mg' | 'sao_paulo_capital' | 'ne'
+export type ProjectTypeEnum      = 'consultoria' | 'inteligencia_de_dados' | 'wms' | 'tms_roteirizador'
+export type ProjectSpecialty     = 'armazem' | 'transportes' | 'compras' | 'comercial' | 'inteligencia_de_dados' | 'wms' | 'tms_roteirizador' | 'planejamento' | 'gestao' | 'mapeamento_de_processos' | 'multidisciplinar'
 export type ClientStatus         = 'active' | 'inactive'
 export type ProjectStatus        = 'not_started' | 'in_progress' | 'at_risk' | 'delayed' | 'completed' | 'suspended' | 'cancelled'
 export type ProjectPhase         = 'initial_deployment' | 'diagnosis' | 'planning' | 'execution' | 'monitoring' | 'consolidation' | 'closed'

@@ -1,13 +1,13 @@
 import { getActiveProjectContext } from '@/lib/active-project/server'
 import { createClient } from '@/lib/supabase/server'
+import { canAccessInternalReports } from '@/lib/utils'
 import type { Profile } from '@/types/database.types'
 import type { ReportAction, ReportData, ReportMeeting, ReportProject, ReportType } from '@/components/reports/pdf/types'
 
 export const REPORT_TYPES: ReportType[] = ['executive', 'weekly', 'actions']
 
 export function canAccessReports(profile: Profile) {
-  const role = profile.role as string
-  return role === 'admin_faus' || role === 'consultor_faus' || role === 'consultor'
+  return canAccessInternalReports(profile.role)
 }
 
 export function isReportType(value: string): value is ReportType {

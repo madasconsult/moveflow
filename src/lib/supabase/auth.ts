@@ -1,7 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Profile, UserRole } from '@/types/database.types'
+import {
+  canAccessDashboard,
+  canAccessPortal,
+  canManageUsers,
+  isAdminRole,
+  isInternalRole,
+} from '@/lib/utils'
 
-type AuthProfile = Pick<Profile, 'id' | 'full_name' | 'email' | 'role' | 'avatar_url' | 'client_id' | 'is_active' | 'created_at' | 'updated_at'>
+type AuthProfile = Pick<Profile, 'id' | 'full_name' | 'email' | 'role' | 'branch' | 'avatar_url' | 'client_id' | 'is_active' | 'created_at' | 'updated_at'>
 
 // Resultado padronizado de busca de sessão
 export type SessionResult =
@@ -66,7 +73,7 @@ export function hasRole(profile: Profile, roles: UserRole[]): boolean {
 }
 
 export function isAdmin(profile: Profile): boolean {
-  return profile.role === 'admin_faus'
+  return isAdminRole(profile.role)
 }
 
 export function isConsultor(profile: Profile): boolean {
@@ -74,16 +81,19 @@ export function isConsultor(profile: Profile): boolean {
 }
 
 export function isCliente(profile: Profile): boolean {
-  return profile.role === 'cliente'
+  return canAccessPortal(profile.role)
+}
+
+export function isInternal(profile: Profile): boolean {
+  return isInternalRole(profile.role)
+}
+
+export function canManageUsersProfile(profile: Profile): boolean {
+  return canManageUsers(profile.role)
 }
 
 // Rota inicial por role após login
 export function getHomeRouteForRole(role: UserRole): string {
-  switch (role) {
-    case 'admin_faus':
-    case 'consultor_faus':
-      return '/dashboard'
-    case 'cliente':
-      return '/portal'
-  }
+  if (canAccessDashboard(role)) return '/dashboard'
+  return '/portal'
 }

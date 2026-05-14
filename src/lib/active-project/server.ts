@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { ACTIVE_PROJECT_COOKIE } from '@/lib/active-project/constants'
+import { canAccessPortal, canViewAllProjects } from '@/lib/utils'
 import type { Profile } from '@/types/database.types'
 
 export interface ActiveProjectOption {
@@ -48,8 +49,8 @@ export async function getActiveProjectContext(profile: Profile): Promise<ActiveP
     (((membershipsRes.data as { project_id: string }[] | null) ?? [])).map(member => member.project_id)
   )
   const accessibleProjects = ((projectsRes.data as unknown as ProjectWithClient[] | null) ?? []).filter(project => {
-    if (profile.role === 'admin_faus') return true
-    if (profile.role === 'cliente') return Boolean(profile.client_id) && project.client_id === profile.client_id
+    if (canViewAllProjects(profile.role)) return true
+    if (canAccessPortal(profile.role)) return Boolean(profile.client_id) && project.client_id === profile.client_id
     return project.main_consultant_id === profile.id || membershipProjectIds.has(project.id)
   })
 

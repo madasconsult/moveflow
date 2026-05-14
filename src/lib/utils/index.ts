@@ -35,9 +35,41 @@ export function cn(...inputs: ClassValue[]) {
 // ── Labels de exibição ────────────────────────────────────────────────────────
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  admin_faus:      'Administrador FAUS',
+  admin_faus:      'Admin FAUS',
+  gestor_faus:     'Gestor FAUS',
   consultor_faus:  'Consultor FAUS',
   cliente:         'Cliente',
+}
+
+export const INTERNAL_ROLES: UserRole[] = ['admin_faus', 'gestor_faus', 'consultor_faus']
+export const ALL_PROJECTS_ROLES: UserRole[] = ['admin_faus', 'gestor_faus']
+
+export function isAdminRole(role: UserRole) {
+  return role === 'admin_faus'
+}
+
+export function isInternalRole(role: UserRole) {
+  return INTERNAL_ROLES.includes(role)
+}
+
+export function canViewAllProjects(role: UserRole) {
+  return ALL_PROJECTS_ROLES.includes(role)
+}
+
+export function canManageUsers(role: UserRole) {
+  return role === 'admin_faus'
+}
+
+export function canAccessDashboard(role: UserRole) {
+  return isInternalRole(role)
+}
+
+export function canAccessPortal(role: UserRole) {
+  return role === 'cliente'
+}
+
+export function canAccessInternalReports(role: UserRole) {
+  return isInternalRole(role)
 }
 
 export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {

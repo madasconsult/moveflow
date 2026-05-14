@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Building2, FolderKanban, CheckSquare,
   CalendarDays, FileText, TrendingUp, History, Users, SearchCheck,
 } from 'lucide-react'
-import { cn, ROLE_LABELS } from '@/lib/utils'
+import { canManageUsers, cn, ROLE_LABELS } from '@/lib/utils'
 import { DASHBOARD_NAV_ITEMS, ADMIN_NAV_ITEMS, getNavItemsForRole } from '@/lib/utils/navigation'
 import type { Profile } from '@/types/database.types'
 import { getInitials } from '@/lib/utils'
@@ -35,7 +35,7 @@ export function Sidebar({ profile }: SidebarProps) {
   const items = getNavItemsForRole(DASHBOARD_NAV_ITEMS, profile.role)
   const principalItems = items.filter(item => item.href !== '/dashboard/clientes')
   const cadastroItems = items.filter(item => item.href === '/dashboard/clientes')
-  const adminItems = profile.role === 'admin_faus'
+  const adminItems = canManageUsers(profile.role)
     ? getNavItemsForRole(ADMIN_NAV_ITEMS, profile.role)
     : []
 

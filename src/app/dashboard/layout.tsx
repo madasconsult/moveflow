@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { getActiveProjectContext } from '@/lib/active-project/server'
+import { canAccessPortal } from '@/lib/utils'
 
 export default async function DashboardLayout({
   children,
@@ -18,7 +19,7 @@ export default async function DashboardLayout({
 
   const { profile } = session
 
-  if (profile.role === 'cliente') redirect('/portal')
+  if (canAccessPortal(profile.role)) redirect('/portal')
 
   const activeProjectContext = await getActiveProjectContext(profile)
 
