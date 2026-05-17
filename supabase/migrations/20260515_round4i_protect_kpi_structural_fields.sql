@@ -8,6 +8,8 @@
 -- Observacao:
 -- - kpi_target_periods ja permanece admin-only pela RLS da Rodada 4H.
 -- - kpi_period_records concentra apuracoes operacionais e nao e bloqueada por esta trigger.
+-- - target_value e status permanecem livres para atualizacao do resumo operacional
+--   do KPI durante a apuracao dos periodos.
 
 create or replace function public.protect_kpi_structural_fields()
 returns trigger
@@ -38,7 +40,6 @@ begin
     or new.description is distinct from old.description
     or new.classification is distinct from old.classification
     or new.unit_of_measure is distinct from old.unit_of_measure
-    or new.target_value is distinct from old.target_value
     or new.update_frequency is distinct from old.update_frequency
     or new.responsible_id is distinct from old.responsible_id
     or new.reading_type is distinct from old.reading_type
@@ -46,7 +47,6 @@ begin
     or new.diagnosis_indicator_id is distinct from old.diagnosis_indicator_id
     or new.created_by is distinct from old.created_by
     or new.created_at is distinct from old.created_at
-    or new.status is distinct from old.status
   then
     raise exception 'Campos estruturais de KPI só podem ser alterados por Admin FAUS.';
   end if;
