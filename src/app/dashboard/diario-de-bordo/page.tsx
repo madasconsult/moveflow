@@ -6,10 +6,15 @@ import { ActiveProjectEmptyState } from '@/components/projects/ActiveProjectEmpt
 import { DeleteDiaryEntryButton } from '@/components/diary/DeleteDiaryEntryButton'
 import { DiaryMonthlyChart } from '@/components/diary/DiaryMonthlyChart'
 import { getActiveProjectContext } from '@/lib/active-project/server'
-import { buildDiaryMonthBuckets, formatDiaryDate, formatDiaryPeriod, isSameMonth } from '@/lib/diary-board'
+import {
+  buildDiaryMonthBuckets,
+  formatDiaryDate,
+  formatDiaryPeriod,
+  isSameMonth,
+} from '@/lib/diary-board'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
-import type { DiaryDeliverable, DiaryEntry, Profile, Project } from '@/types/database.types'
+import type { DiaryEntry, Profile, Project } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Diário de Bordo' }
 
@@ -25,9 +30,23 @@ type DiaryEntryListItem = Pick<
   | 'created_at'
 >
 
-type DeliverableLookup = Pick<DiaryDeliverable, 'id' | 'diary_entry_id' | 'description' | 'position'>
+interface DeliverableStatusLookup {
+  id: string
+  diary_entry_id: string
+  status: string | null
+  is_carried_over: boolean
+}
+
 type ProfileLookup = Pick<Profile, 'id' | 'full_name'>
 type ProjectPermissionLookup = Pick<Project, 'id' | 'main_consultant_id'>
+
+interface EntrySummary {
+  completed: number
+  partial: number
+  pending: number
+  carried: number
+  total: number
+}
 
 function StatCard({
   label,
@@ -49,6 +68,34 @@ function StatCard({
           <Icon size={20} />
         </div>
       </div>
+    </div>
+  )
+}
+
+function EntryStatusBadges({ summary }: { summary: EntrySummary }) {
+  if (summary.total === 0) return <span className="text-neutral-400">—</span>
+  return (
+    <div className="flex flex-wrap gap-1">
+      {summary.completed > 0 && (
+        <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+          {summary.completed} realiz.
+        </span>
+      )}
+      {summary.partial > 0 && (
+        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+          {summary.partial} parcial
+        </span>
+      )}
+      {summary.pending > 0 && (
+        <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+          {summary.pending} pend.
+        </span>
+      )}
+      {summary.carried > 0 && (
+        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+          {summary.carried} herd.
+        </span>
+      )}
     </div>
   )
 }
@@ -101,31 +148,40 @@ export default async function DiaryBoardPage() {
   const deliverablesRes = entryIds.length > 0
     ? await supabase
       .from('diary_deliverables')
-      .select('id, diary_entry_id, description, position')
+      .select('id, diary_entry_id, status, is_carried_over')
       .in('diary_entry_id', entryIds)
-    : { data: [] as DeliverableLookup[] | null }
+    : { data: [] as DeliverableStatusLookup[] | null }
 
-  const deliverables: DeliverableLookup[] = (deliverablesRes.data as DeliverableLookup[] | null) ?? []
-  const deliverablesByEntry = new Map<string, DeliverableLookup[]>()
+  const deliverables: DeliverableStatusLookup[] =
+    (deliverablesRes.data as DeliverableStatusLookup[] | null) ?? []
 
-  deliverables.forEach(deliverable => {
-    const current = deliverablesByEntry.get(deliverable.diary_entry_id) ?? []
-    current.push(deliverable)
-    deliverablesByEntry.set(deliverable.diary_entry_id, current)
+  // Build per-entry summary map
+  const summaryByEntry = new Map<string, EntrySummary>()
+  deliverables.forEach(d => {
+    const s = summaryByEntry.get(d.diary_entry_id) ?? {
+      completed: 0, partial: 0, pending: 0, carried: 0, total: 0,
+    }
+    s.total++
+    if (d.status === 'completed') s.completed++
+    else if (d.status === 'partial') s.partial++
+    else if (d.status === 'pending') s.pending++
+    if (d.is_carried_over) s.carried++
+    summaryByEntry.set(d.diary_entry_id, s)
   })
 
-  const creatorIds = Array.from(new Set(entries.map(entry => entry.created_by).filter(Boolean) as string[]))
+  const creatorIds = Array.from(new Set(entries.map(e => e.created_by).filter(Boolean) as string[]))
   const creatorsRes = creatorIds.length > 0
     ? await supabase.from('profiles').select('id, full_name').in('id', creatorIds)
     : { data: [] as ProfileLookup[] | null }
 
   const creatorMap = new Map(
-    (((creatorsRes.data as ProfileLookup[] | null) ?? [])).map(profile => [profile.id, profile.full_name])
+    ((creatorsRes.data as ProfileLookup[] | null) ?? []).map(p => [p.id, p.full_name])
   )
 
   const rows = entries.map(entry => ({
     ...entry,
-    deliverable_count: deliverablesByEntry.get(entry.id)?.length ?? 0,
+    deliverable_count: summaryByEntry.get(entry.id)?.total ?? 0,
+    summary: summaryByEntry.get(entry.id) ?? { completed: 0, partial: 0, pending: 0, carried: 0, total: 0 },
     creator_name: entry.created_by ? creatorMap.get(entry.created_by) ?? 'Usuário vinculado' : 'Não informado',
   }))
 
@@ -201,10 +257,10 @@ export default async function DiaryBoardPage() {
               <thead className="border-b border-neutral-200 bg-neutral-50">
                 <tr className="text-left text-xs font-semibold uppercase tracking-wider text-neutral-500">
                   <th className="px-5 py-3">Visita</th>
-                  <th className="px-5 py-3">Cliente / Projeto</th>
                   <th className="px-5 py-3">Período</th>
                   <th className="px-5 py-3">Pessoas FAUS</th>
                   <th className="px-5 py-3">Entregáveis</th>
+                  <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Criado por</th>
                   <th className="px-5 py-3">Criado em</th>
                   <th className="px-5 py-3 text-right">Ações</th>
@@ -222,21 +278,18 @@ export default async function DiaryBoardPage() {
                       </Link>
                     </td>
                     <td className="px-5 py-4 text-neutral-600">
-                      <div>
-                        <p>{activeProjectContext.activeProject?.client_name ?? 'Cliente vinculado'}</p>
-                        <p className="text-xs text-neutral-400">{activeProjectContext.activeProject?.project_name}</p>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-neutral-600">
                       {formatDiaryPeriod(entry.start_date, entry.end_date)}
                     </td>
                     <td className="px-5 py-4 text-neutral-600">
-                      <p className="max-w-64 whitespace-normal">
+                      <p className="max-w-48 whitespace-normal">
                         {entry.faus_people.join(', ')}
                       </p>
                     </td>
                     <td className="px-5 py-4 text-neutral-600">
                       {entry.deliverable_count}
+                    </td>
+                    <td className="px-5 py-4">
+                      <EntryStatusBadges summary={entry.summary} />
                     </td>
                     <td className="px-5 py-4 text-neutral-600">
                       {entry.creator_name}

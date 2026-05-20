@@ -1,9 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { BookOpenText, CalendarDays, CheckCircle2, Pencil, Users } from 'lucide-react'
+import { ArrowRightFromLine, BookOpenText, CalendarDays, CheckCircle2, Pencil, Users } from 'lucide-react'
 import { DeleteDiaryEntryButton } from '@/components/diary/DeleteDiaryEntryButton'
-import { formatDiaryDate, formatDiaryPeriod } from '@/lib/diary-board'
+import {
+  DELIVERABLE_STATUS_CLASSES,
+  DELIVERABLE_STATUS_LABELS,
+  formatDiaryDate,
+  formatDiaryPeriod,
+  getDeliverableStatusKey,
+} from '@/lib/diary-board'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import type { DiaryDeliverable, DiaryEntry, Profile, Project } from '@/types/database.types'
@@ -18,6 +24,61 @@ type ProjectLookup = Pick<Project, 'id' | 'project_name' | 'client_id' | 'main_c
   clients: { company_name: string | null } | { company_name: string | null }[] | null
 }
 type CreatorLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
+
+interface DeliverableSummary {
+  total: number
+  new_count: number
+  carried: number
+  completed: number
+  partial: number
+  pending: number
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  const key = getDeliverableStatusKey(status)
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DELIVERABLE_STATUS_CLASSES[key]}`}>
+      {DELIVERABLE_STATUS_LABELS[key]}
+    </span>
+  )
+}
+
+function SummaryCard({ summary }: { summary: DeliverableSummary }) {
+  return (
+    <div className="card p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <CheckCircle2 size={16} className="text-neutral-400" />
+        <h2 className="text-sm font-semibold text-neutral-900">Resumo de entregáveis</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-xl bg-neutral-50 p-3 text-center">
+          <p className="text-2xl font-semibold text-neutral-900">{summary.total}</p>
+          <p className="mt-0.5 text-xs text-neutral-500">Total</p>
+        </div>
+        <div className="rounded-xl bg-neutral-50 p-3 text-center">
+          <p className="text-2xl font-semibold text-neutral-700">{summary.new_count}</p>
+          <p className="mt-0.5 text-xs text-neutral-500">Novos</p>
+        </div>
+        <div className="rounded-xl bg-amber-50 p-3 text-center">
+          <p className="text-2xl font-semibold text-amber-700">{summary.carried}</p>
+          <p className="mt-0.5 text-xs text-amber-600">Herdados</p>
+        </div>
+        <div className="rounded-xl bg-green-50 p-3 text-center">
+          <p className="text-2xl font-semibold text-green-700">{summary.completed}</p>
+          <p className="mt-0.5 text-xs text-green-600">Realizados</p>
+        </div>
+        <div className="rounded-xl bg-amber-50 p-3 text-center">
+          <p className="text-2xl font-semibold text-amber-700">{summary.partial}</p>
+          <p className="mt-0.5 text-xs text-amber-600">Parciais</p>
+        </div>
+        <div className="rounded-xl bg-red-50 p-3 text-center">
+          <p className="text-2xl font-semibold text-red-700">{summary.pending}</p>
+          <p className="mt-0.5 text-xs text-red-600">Pendentes</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default async function DiaryEntryDetailPage({ params }: PageProps) {
   const session = await getSessionWithProfile()
@@ -46,7 +107,7 @@ export default async function DiaryEntryDetailPage({ params }: PageProps) {
       .single(),
     supabase
       .from('diary_deliverables')
-      .select('id, diary_entry_id, description, position, created_at')
+      .select('id, diary_entry_id, description, position, created_at, status, completion_date, notes, origin_deliverable_id, carried_from_diary_entry_id, is_carried_over')
       .eq('diary_entry_id', entry.id)
       .order('position', { ascending: true }),
     entry.created_by
@@ -58,10 +119,40 @@ export default async function DiaryEntryDetailPage({ params }: PageProps) {
   const client = Array.isArray(project?.clients) ? project?.clients[0] : project?.clients
   const deliverables = (deliverablesRes.data as DiaryDeliverable[] | null) ?? []
   const creator = (creatorRes.data as CreatorLookup | null) ?? null
+
+  // Fetch origin entry titles for carried-over deliverables
+  const carriedFromIds = Array.from(
+    new Set(
+      deliverables
+        .filter(d => d.carried_from_diary_entry_id)
+        .map(d => d.carried_from_diary_entry_id as string)
+    )
+  )
+  const originEntryTitles = new Map<string, string>()
+  if (carriedFromIds.length > 0) {
+    const { data: originEntries } = await supabase
+      .from('diary_entries')
+      .select('id, title')
+      .in('id', carriedFromIds)
+    ;(originEntries ?? []).forEach((e: { id: string; title: string }) => {
+      originEntryTitles.set(e.id, e.title)
+    })
+  }
+
   const isAdmin = session.profile.role === 'admin_faus'
   const canManageDiary =
     isAdmin ||
     (session.profile.role === 'consultor_faus' && project?.main_consultant_id === session.profile.id)
+
+  // Build summary
+  const summary: DeliverableSummary = {
+    total: deliverables.length,
+    new_count: deliverables.filter(d => !d.is_carried_over).length,
+    carried: deliverables.filter(d => d.is_carried_over).length,
+    completed: deliverables.filter(d => d.status === 'completed').length,
+    partial: deliverables.filter(d => d.status === 'partial').length,
+    pending: deliverables.filter(d => d.status === 'pending').length,
+  }
 
   return (
     <div className="space-y-6">
@@ -128,18 +219,60 @@ export default async function DiaryEntryDetailPage({ params }: PageProps) {
               <h2 className="text-sm font-semibold text-neutral-900">Entregáveis da semana</h2>
             </div>
 
-            <div className="space-y-3">
-              {deliverables.map((deliverable, index) => (
-                <div key={deliverable.id} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
-                    Entregável {index + 1}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">
-                    {deliverable.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {deliverables.length === 0 ? (
+              <p className="text-sm text-neutral-500">Nenhum entregável registrado.</p>
+            ) : (
+              <div className="space-y-3">
+                {deliverables.map((deliverable, index) => {
+                  const statusKey = getDeliverableStatusKey(deliverable.status)
+                  const originTitle = deliverable.carried_from_diary_entry_id
+                    ? originEntryTitles.get(deliverable.carried_from_diary_entry_id)
+                    : null
+
+                  return (
+                    <div key={deliverable.id} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
+                          Entregável {index + 1}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {deliverable.is_carried_over && (
+                            <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                              <ArrowRightFromLine size={10} />
+                              herdado
+                            </span>
+                          )}
+                          <StatusBadge status={deliverable.status} />
+                        </div>
+                      </div>
+
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">
+                        {deliverable.description}
+                      </p>
+
+                      {deliverable.is_carried_over && originTitle && (
+                        <p className="text-xs text-amber-600">
+                          Origem: {originTitle}
+                        </p>
+                      )}
+
+                      {deliverable.status === 'completed' && deliverable.completion_date && (
+                        <p className="text-xs text-green-700">
+                          Realizado em {formatDiaryDate(deliverable.completion_date)}
+                        </p>
+                      )}
+
+                      {(deliverable.status === 'partial' || deliverable.status === 'pending') && deliverable.notes && (
+                        <div className="rounded-lg bg-white border border-neutral-100 px-3 py-2">
+                          <p className="text-xs font-medium text-neutral-400 mb-0.5">Observação</p>
+                          <p className="text-xs text-neutral-600 whitespace-pre-wrap">{deliverable.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -157,6 +290,8 @@ export default async function DiaryEntryDetailPage({ params }: PageProps) {
               ))}
             </div>
           </div>
+
+          <SummaryCard summary={summary} />
 
           <div className="card p-6 space-y-4">
             <div className="flex items-center gap-2">

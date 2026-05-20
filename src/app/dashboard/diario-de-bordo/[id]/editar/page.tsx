@@ -30,7 +30,7 @@ export default async function EditDiaryEntryPage({ params }: PageProps) {
       .single(),
     supabase
       .from('diary_deliverables')
-      .select('id, diary_entry_id, description, position, created_at')
+      .select('id, diary_entry_id, description, position, created_at, status, completion_date, notes, origin_deliverable_id, carried_from_diary_entry_id, is_carried_over')
       .eq('diary_entry_id', params.id)
       .order('position', { ascending: true }),
     getActiveProjectContext(session.profile),

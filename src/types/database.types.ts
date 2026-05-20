@@ -499,6 +499,12 @@ export type Database = {
           description: string
           position: number
           created_at: string
+          status: string | null
+          completion_date: string | null
+          notes: string | null
+          origin_deliverable_id: string | null
+          carried_from_diary_entry_id: string | null
+          is_carried_over: boolean
         }
         Insert: {
           id?: string
@@ -506,10 +512,22 @@ export type Database = {
           description: string
           position?: number
           created_at?: string
+          status?: string | null
+          completion_date?: string | null
+          notes?: string | null
+          origin_deliverable_id?: string | null
+          carried_from_diary_entry_id?: string | null
+          is_carried_over?: boolean
         }
         Update: {
           description?: string
           position?: number
+          status?: string | null
+          completion_date?: string | null
+          notes?: string | null
+          origin_deliverable_id?: string | null
+          carried_from_diary_entry_id?: string | null
+          is_carried_over?: boolean
         }
       }
       meetings: {

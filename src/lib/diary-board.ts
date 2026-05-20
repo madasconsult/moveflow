@@ -1,3 +1,24 @@
+export type DeliverableStatus = 'completed' | 'partial' | 'pending'
+
+export const DELIVERABLE_STATUS_LABELS: Record<DeliverableStatus | 'unknown', string> = {
+  completed: 'Realizado',
+  partial: 'Parcial',
+  pending: 'Pendente',
+  unknown: 'Não definido',
+}
+
+export const DELIVERABLE_STATUS_CLASSES: Record<DeliverableStatus | 'unknown', string> = {
+  completed: 'bg-green-50 text-green-700',
+  partial: 'bg-amber-50 text-amber-700',
+  pending: 'bg-red-50 text-red-700',
+  unknown: 'bg-neutral-100 text-neutral-500',
+}
+
+export function getDeliverableStatusKey(status: string | null): DeliverableStatus | 'unknown' {
+  if (status === 'completed' || status === 'partial' || status === 'pending') return status
+  return 'unknown'
+}
+
 export interface DiaryMonthBucket {
   monthKey: string
   label: string
