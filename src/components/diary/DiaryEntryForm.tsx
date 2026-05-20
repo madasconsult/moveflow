@@ -57,6 +57,8 @@ interface PendingDeliverableOption {
   notes: string | null
   diary_entry_id: string
   entry_title: string
+  // Non-null when this item is a carry-over: shows the root entry title as provenance
+  origin_entry_title: string | null
 }
 
 function makeId(): string {
@@ -273,16 +275,17 @@ export function DiaryEntryForm({
     async function fetchPending() {
       setLoadingPending(true)
       try {
+        // Fetch all entries for the project (need start_date for recency sorting)
         const { data: entriesRaw, error: entriesErr } = await (supabase as any)
           .from('diary_entries')
-          .select('id, title')
+          .select('id, title, start_date')
           .eq('project_id', projectId)
           .is('deleted_at', null)
           .order('start_date', { ascending: false })
 
         if (cancelled) return
 
-        const entries = entriesRaw as Array<{ id: string; title: string }> | null
+        const entries = entriesRaw as Array<{ id: string; title: string; start_date: string }> | null
 
         if (entriesErr || !entries || entries.length === 0) {
           setPendingOptions([])
@@ -291,25 +294,96 @@ export function DiaryEntryForm({
         }
 
         const entryIds = entries.map(e => e.id)
-        const titleMap = new Map(entries.map(e => [e.id, e.title]))
+        const entryTitleMap = new Map(entries.map(e => [e.id, e.title]))
+        const entryDateMap = new Map(entries.map(e => [e.id, e.start_date]))
 
-        const { data: delivs, error: delivsErr } = await (supabase as any)
+        // Fetch ALL deliverables (all statuses) — needed to trace carry-over chains
+        const { data: delivsRaw, error: delivsErr } = await (supabase as any)
           .from('diary_deliverables')
-          .select('id, description, status, notes, diary_entry_id')
+          .select('id, description, status, notes, diary_entry_id, origin_deliverable_id')
           .in('diary_entry_id', entryIds)
-          .in('status', ['pending', 'partial'])
 
         if (cancelled) return
         if (delivsErr) return
 
-        const options: PendingDeliverableOption[] = (delivs ?? []).map((d: any) => ({
-          id: d.id as string,
-          description: d.description as string,
-          status: d.status as 'pending' | 'partial',
-          notes: d.notes as string | null,
-          diary_entry_id: d.diary_entry_id as string,
-          entry_title: titleMap.get(d.diary_entry_id) ?? 'Visita anterior',
-        }))
+        type RawDeliv = {
+          id: string
+          description: string
+          status: string | null
+          notes: string | null
+          diary_entry_id: string
+          origin_deliverable_id: string | null
+        }
+
+        const allDelivs: RawDeliv[] = delivsRaw ?? []
+
+        // Build lookup and parent→children map for chain traversal
+        const delivMap = new Map(allDelivs.map(d => [d.id, d]))
+        const childrenOf = new Map<string, string[]>()
+        allDelivs.forEach(d => {
+          if (d.origin_deliverable_id) {
+            const ch = childrenOf.get(d.origin_deliverable_id) ?? []
+            ch.push(d.id)
+            childrenOf.set(d.origin_deliverable_id, ch)
+          }
+        })
+
+        // BFS: collect all descendant IDs starting from a root
+        function collectChainIds(rootId: string): string[] {
+          const result: string[] = []
+          const queue: string[] = [rootId]
+          while (queue.length > 0) {
+            const current = queue.shift()!
+            result.push(current)
+            const children = childrenOf.get(current) ?? []
+            queue.push(...children)
+          }
+          return result
+        }
+
+        // Process each chain root (deliverable with no origin_deliverable_id)
+        const roots = allDelivs.filter(d => !d.origin_deliverable_id)
+        const options: PendingDeliverableOption[] = []
+
+        for (const root of roots) {
+          const chainIds = collectChainIds(root.id)
+          const chainItems = chainIds.map(id => delivMap.get(id)).filter(Boolean) as RawDeliv[]
+
+          // Rule: if ANY item in the chain is completed, the whole chain is resolved
+          if (chainItems.some(item => item.status === 'completed')) continue
+
+          // Collect open items (pending or partial)
+          const openItems = chainItems.filter(
+            item => item.status === 'pending' || item.status === 'partial'
+          )
+          if (openItems.length === 0) continue
+
+          // Show only the "leaf" open items — those that have no children in the chain
+          // (i.e. the most advanced open occurrence of this pendency)
+          const leafOpenItems = openItems.filter(item => !(childrenOf.get(item.id)?.length))
+          if (leafOpenItems.length === 0) continue
+
+          // Among leaves, pick the one from the most recent entry
+          const best = leafOpenItems.reduce((prev, curr) => {
+            const dateA = entryDateMap.get(prev.diary_entry_id) ?? ''
+            const dateB = entryDateMap.get(curr.diary_entry_id) ?? ''
+            return dateB > dateA ? curr : prev
+          })
+
+          options.push({
+            id: best.id,
+            description: best.description,
+            status: best.status as 'pending' | 'partial',
+            notes: best.notes ?? null,
+            diary_entry_id: best.diary_entry_id,
+            entry_title: entryTitleMap.get(best.diary_entry_id) ?? 'Visita anterior',
+            // Show root origin only when the selected leaf is not the original item
+            origin_entry_title:
+              best.diary_entry_id !== root.diary_entry_id
+                ? (entryTitleMap.get(root.diary_entry_id) ?? null)
+                : null,
+          })
+        }
 
         setPendingOptions(options)
         setShowPendingPanel(options.length > 0)
@@ -701,6 +775,11 @@ export function DiaryEntryForm({
                           {opt.status === 'partial' ? 'Parcial' : 'Pendente'}
                         </span>
                         <span className="text-xs text-neutral-400">{opt.entry_title}</span>
+                        {opt.origin_entry_title && (
+                          <span className="text-xs text-neutral-300">
+                            · Origem: {opt.origin_entry_title}
+                          </span>
+                        )}
                       </div>
                       {opt.notes && (
                         <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{opt.notes}</p>
