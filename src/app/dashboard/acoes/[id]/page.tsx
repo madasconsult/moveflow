@@ -22,12 +22,25 @@ export const metadata: Metadata = { title: 'Detalhe da Ação' }
 
 interface PageProps {
   params: { id: string }
+  searchParams?: { returnTo?: string }
+}
+
+function getSafeReturnTo(raw: string | undefined): string {
+  if (!raw) return '/dashboard/acoes'
+  try {
+    const decoded = decodeURIComponent(raw)
+    if (decoded.startsWith('/dashboard/acoes')) return decoded
+  } catch {
+    // invalid encoding — fall through
+  }
+  return '/dashboard/acoes'
 }
 
 type ProjectPermissionLookup = Pick<Project, 'id' | 'project_name' | 'main_consultant_id'>
 type ResponsibleLookup = Pick<Profile, 'id' | 'full_name' | 'email'>
 
-export default async function ActionDetailPage({ params }: PageProps) {
+export default async function ActionDetailPage({ params, searchParams }: PageProps) {
+  const backUrl = getSafeReturnTo(searchParams?.returnTo)
   const session = await getSessionWithProfile()
 
   if (session.status === 'unauthenticated') redirect('/login')
@@ -81,7 +94,7 @@ export default async function ActionDetailPage({ params }: PageProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          <Link href="/dashboard/acoes" className="btn-secondary h-10 shrink-0 whitespace-nowrap px-4">
+          <Link href={backUrl} className="btn-secondary h-10 shrink-0 whitespace-nowrap px-4">
             Voltar
           </Link>
           {canManageAction && (
