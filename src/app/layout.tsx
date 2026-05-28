@@ -13,7 +13,25 @@ export const metadata: Metadata = {
     template: '%s | MOVE FLOW',
   },
   description: 'Sistema de Gerenciamento de Projetos de Consultoria — FAUS Soluções Estratégicas',
-  robots: 'noindex, nofollow', // app interno, não indexar
+  robots: 'noindex, nofollow',
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-title': 'MOVE FLOW',
+    'theme-color': '#0057B8',
+  },
 }
 
 export default function RootLayout({
