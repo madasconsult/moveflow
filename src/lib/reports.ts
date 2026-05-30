@@ -76,8 +76,8 @@ interface ProfileLookup {
 export async function loadReportData(projectId: string, startDate: string, endDate: string): Promise<ReportData | null> {
   const supabase = await createClient()
 
-  const projectsTable = supabase.from('projects') as any
-  const projectRes = await projectsTable
+  // Supabase generated types don't model the clients join shape, so we bypass the query builder type here.
+  const projectRes = await (supabase.from('projects') as any)
     .select('id, project_name, short_description, main_objective, executive_scope, status, phase, progress_percentage, clients(company_name)')
     .eq('id', projectId)
     .single()
@@ -100,27 +100,65 @@ export async function loadReportData(projectId: string, startDate: string, endDa
     client_name: client?.company_name ?? null,
   }
 
+  // endDate with time suffix to safely include the full final day on timestamptz columns
+  const endDatetime = `${endDate}T23:59:59.999Z`
+
+  // Relevance filter for actions — three OR-grouped conditions:
+  //
+  // A) Active actions (status ≠ completed/cancelled) created before the period ended.
+  //    Covers: in_progress, overdue, not_started, waiting_client, waiting_faus — including
+  //    historically overdue actions still open at the start of the period.
+  //
+  // B) Actions with due_date within the period (any status).
+  //    Catches cancelled actions whose deadline falls in the period, since there is no
+  //    cancelled_at field. Cancelled actions without a due_date in the period are excluded
+  //    (known limitation — no reliable cancellation date available).
+  //
+  // C) Actions completed within the period (completion_date between start and end).
+  //
+  // Excluded (histórico morto):
+  //   — completed actions with completion_date before startDate
+  //   — cancelled actions with due_date before startDate or without due_date
+  //   — active actions created after endDate (edge case: future-created placeholders)
+  const actionsOrFilter = [
+    `and(status.not.in.(completed,cancelled),created_at.lte.${endDatetime})`,
+    `and(due_date.gte.${startDate},due_date.lte.${endDate})`,
+    `and(completion_date.gte.${startDate},completion_date.lte.${endDatetime})`,
+  ].join(',')
+
   const [actionsRes, meetingsRes] = await Promise.all([
     supabase
       .from('actions')
       .select('id, business_id, title, description, assigned_to, status, priority, due_date, completion_date, created_at')
       .eq('project_id', projectId)
+      .or(actionsOrFilter)
       .order('due_date', { ascending: true, nullsFirst: false }),
+    // Meetings filtered to the selected period at DB level.
+    // The executive report metric is updated to "Reuniões no período" to reflect this scope.
     supabase
       .from('meetings')
       .select('id, meeting_date, meeting_type, executive_summary, participants')
       .eq('project_id', projectId)
+      .gte('meeting_date', startDate)
+      .lte('meeting_date', endDatetime)
       .order('meeting_date', { ascending: false }),
   ])
 
-  const actionRows = actionsRes.error ? [] : ((actionsRes.data as unknown as ActionQueryRow[] | null) ?? [])
+  // DB errors on actions or meetings abort the report — an empty result from a failed query
+  // would silently generate a misleading PDF with no data.
+  if (actionsRes.error) return null
+  if (meetingsRes.error) return null
+
+  const actionRows = (actionsRes.data as unknown as ActionQueryRow[] | null) ?? []
   const responsibleIds = Array.from(new Set(actionRows.map(action => action.assigned_to).filter(Boolean) as string[]))
   const profilesRes = responsibleIds.length > 0
     ? await supabase.from('profiles').select('id, full_name').in('id', responsibleIds)
     : { data: [] as ProfileLookup[] | null, error: null }
 
+  // Profile lookup failure degrades gracefully: responsible_name shows as null rather than
+  // aborting the entire report, since names are supplementary display data.
   const profileMap = new Map(
-    (((profilesRes.data as ProfileLookup[] | null) ?? [])).map(profile => [profile.id, profile.full_name])
+    ((profilesRes.data as ProfileLookup[] | null) ?? []).map(profile => [profile.id, profile.full_name])
   )
 
   const actions: ReportAction[] = actionRows.map(action => ({
@@ -128,15 +166,13 @@ export async function loadReportData(projectId: string, startDate: string, endDa
     responsible_name: action.assigned_to ? profileMap.get(action.assigned_to) ?? null : null,
   }))
 
-  const meetings: ReportMeeting[] = meetingsRes.error
-    ? []
-    : ((meetingsRes.data as unknown as MeetingQueryRow[] | null) ?? []).map(meeting => ({
-        id: meeting.id,
-        meeting_date: meeting.meeting_date,
-        meeting_type: meeting.meeting_type,
-        executive_summary: meeting.executive_summary,
-        participants: meeting.participants,
-      }))
+  const meetings: ReportMeeting[] = ((meetingsRes.data as unknown as MeetingQueryRow[] | null) ?? []).map(meeting => ({
+    id: meeting.id,
+    meeting_date: meeting.meeting_date,
+    meeting_type: meeting.meeting_type,
+    executive_summary: meeting.executive_summary,
+    participants: meeting.participants,
+  }))
 
   return {
     generatedAt: new Date().toISOString(),

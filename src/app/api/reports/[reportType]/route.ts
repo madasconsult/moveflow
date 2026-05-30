@@ -94,7 +94,7 @@ async function generateReportResponse({
 
   const data = await loadReportData(projectId, normalizedPeriod.startDate, normalizedPeriod.endDate)
   if (!data) {
-    return NextResponse.json({ error: 'Não foi possível carregar os dados do projeto.' }, { status: 404 })
+    return NextResponse.json({ error: 'Não foi possível carregar os dados do projeto.' }, { status: 500 })
   }
 
   const reportData = {

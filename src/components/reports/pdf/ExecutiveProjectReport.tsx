@@ -44,7 +44,7 @@ export function ExecutiveProjectReport({ data }: { data: ReportData }) {
         <View style={reportStyles.grid}>
           <MetricCard label="Conclusão da carteira" value={`${stats.completionPercent}%`} tone="success" />
           <MetricCard label="Progresso do projeto" value={`${data.project.progress_percentage ?? 0}%`} tone="success" />
-          <MetricCard label="Reuniões no projeto" value={data.meetings.length} />
+          <MetricCard label="Reuniões no período" value={data.meetings.length} />
           <MetricCard label="Status" value={data.project.status.replaceAll('_', ' ')} />
         </View>
 
