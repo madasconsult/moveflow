@@ -1027,6 +1027,14 @@ export type Client          = Tables<'clients'>
 export type Project         = Tables<'projects'>
 export type Action          = Tables<'actions'>
 export type ActionStep      = Tables<'action_steps'>
+
+// Tipo manual — action_assignees não está no schema gerado automaticamente (tabela criada na Rodada D)
+export type ActionAssignee = {
+  id: string
+  action_id: string
+  user_id: string
+  created_at: string
+}
 export type Meeting         = Tables<'meetings'>
 export type Document        = Tables<'documents'>
 export type DocumentFolder  = Tables<'document_folders'>

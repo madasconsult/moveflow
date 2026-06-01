@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Building2, FolderKanban, CheckSquare,
-  CalendarDays, FileText, TrendingUp, History, Users, SearchCheck,
+  CalendarDays, TrendingUp, History, Users, SearchCheck,
+  NotebookPen, BarChart3, FolderOpen,
 } from 'lucide-react'
 import { canManageUsers, cn, ROLE_LABELS } from '@/lib/utils'
 import { DASHBOARD_NAV_ITEMS, ADMIN_NAV_ITEMS, getNavItemsForRole } from '@/lib/utils/navigation'
@@ -18,11 +19,13 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FolderKanban,
   CheckSquare,
   CalendarDays,
-  FileText,
   TrendingUp,
   SearchCheck,
   History,
   Users,
+  NotebookPen,
+  BarChart3,
+  FolderOpen,
 }
 
 interface SidebarProps {

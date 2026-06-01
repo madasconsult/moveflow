@@ -44,19 +44,19 @@ export const DASHBOARD_NAV_ITEMS: NavItem[] = [
   {
     label: 'Diário de Bordo',
     href:  '/dashboard/diario-de-bordo',
-    icon:  'FileText',
+    icon:  'NotebookPen',
     roles: INTERNAL_ROLES,
   },
   {
     label: 'Relatórios',
     href:  '/dashboard/relatorios',
-    icon:  'FileText',
+    icon:  'BarChart3',
     roles: INTERNAL_ROLES,
   },
   {
     label: 'Documentos',
     href:  '/dashboard/documentos',
-    icon:  'FileText',
+    icon:  'FolderOpen',
     roles: INTERNAL_ROLES,
   },
   {

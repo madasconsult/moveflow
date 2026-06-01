@@ -16,7 +16,7 @@ import {
 } from '@/lib/utils'
 import { ActionStepsManager } from '@/components/actions/ActionStepsManager'
 import { MarkActionCompletedButton } from '@/components/actions/MarkActionCompletedButton'
-import type { Action, ActionStep, Profile, Project } from '@/types/database.types'
+import type { Action, ActionAssignee, ActionStep, Profile, Project } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Detalhe da Ação' }
 
@@ -59,11 +59,12 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
 
   if (!action) notFound()
 
-  const [projectRes, responsibleRes, stepsRes] = await Promise.all([
+  const [projectRes, assigneesRes, stepsRes] = await Promise.all([
     supabase.from('projects').select('id, project_name, main_consultant_id').eq('id', action.project_id).single(),
-    action.assigned_to
-      ? supabase.from('profiles').select('id, full_name, email').eq('id', action.assigned_to).single()
-      : Promise.resolve({ data: null }),
+    supabase
+      .from('action_assignees' as any)
+      .select('user_id')
+      .eq('action_id', action.id),
     supabase
       .from('action_steps')
       .select('*')
@@ -72,9 +73,28 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
       .order('created_at', { ascending: true }),
   ])
 
-  const project = (projectRes.data as ProjectPermissionLookup | null) ?? null
-  const responsible = (responsibleRes.data as ResponsibleLookup | null) ?? null
+  const project    = (projectRes.data as ProjectPermissionLookup | null) ?? null
   const actionSteps = (stepsRes.data as ActionStep[] | null) ?? []
+  const assigneeRows = (assigneesRes.data as Pick<ActionAssignee, 'user_id'>[] | null) ?? []
+
+  // IDs dos responsáveis: prioriza action_assignees, fallback em assigned_to
+  const assigneeIds: string[] =
+    assigneeRows.length > 0
+      ? assigneeRows.map(r => r.user_id)
+      : action.assigned_to
+        ? [action.assigned_to]
+        : []
+
+  // Busca perfis dos responsáveis
+  const responsibles: ResponsibleLookup[] =
+    assigneeIds.length > 0
+      ? ((await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', assigneeIds)
+          .order('full_name')).data as ResponsibleLookup[] | null) ?? []
+      : []
+
   const canManageAction =
     session.profile.role === 'admin_faus' ||
     (session.profile.role === 'consultor_faus' && project?.main_consultant_id === session.profile.id)
@@ -90,7 +110,7 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
             </span>
           </div>
           <p className="page-subtitle">
-            Visão simples da ação, responsável, prazo e visibilidade no portal do cliente.
+            Visão simples da ação, responsáveis, prazo e visibilidade no portal do cliente.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -144,15 +164,28 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
               <p className="mb-1 text-xs text-neutral-400">Projeto</p>
               <p className="text-sm text-neutral-800">{project?.project_name ?? 'Projeto vinculado'}</p>
             </div>
+
+            {/* Responsáveis — múltiplos com fallback */}
             <div>
-              <p className="mb-1 text-xs text-neutral-400">Responsável</p>
-              <p className="text-sm text-neutral-800">
-                {responsible?.full_name ?? 'Nenhum responsável definido'}
+              <p className="mb-1 text-xs text-neutral-400">
+                {responsibles.length > 1 ? 'Responsáveis' : 'Responsável'}
               </p>
-              {responsible?.email && (
-                <p className="mt-1 text-xs text-neutral-400">{responsible.email}</p>
+              {responsibles.length === 0 ? (
+                <p className="text-sm text-neutral-800">Nenhum responsável definido</p>
+              ) : (
+                <ul className="space-y-1">
+                  {responsibles.map(r => (
+                    <li key={r.id}>
+                      <p className="text-sm text-neutral-800">{r.full_name}</p>
+                      {r.email && (
+                        <p className="text-xs text-neutral-400">{r.email}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
+
             <div>
               <p className="mb-1 text-xs text-neutral-400">Prazo</p>
               <p className="text-sm text-neutral-800">{formatDate(action.due_date)}</p>

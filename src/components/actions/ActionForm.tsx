@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { AlertTriangle, Loader2 } from 'lucide-react'
+import { createAction, updateAction } from '@/app/dashboard/acoes/actions'
 import {
   ACTION_CLASSIFICATION_LABELS,
   ACTION_PRIORITY_LABELS,
@@ -15,13 +15,12 @@ import type {
   ActionClassification,
   ActionPriority,
   ActionStatus,
-  InsertDto,
-  UpdateDto,
 } from '@/types/database.types'
 
 interface ProjectOption {
   id: string
   project_name: string
+  client_id: string
 }
 
 interface ResponsibleOption {
@@ -35,6 +34,16 @@ interface ActionFormProps {
   projects: ProjectOption[]
   responsibles: ResponsibleOption[]
   canChooseProject: boolean
+  /** IDs dos responsáveis já vinculados (action_assignees) — para edição */
+  initialAssigneeIds?: string[]
+  /** Indica se o usuário logado é admin_faus */
+  isAdmin: boolean
+  /** ID do projeto ativo no filtro global (cookie) */
+  activeProjectId?: string | null
+  /** client_id do projeto ativo — para detectar mismatch de cliente */
+  activeClientId?: string | null
+  /** Nome do cliente ativo — para exibição contextual */
+  activeClientName?: string | null
 }
 
 interface FormErrors {
@@ -48,14 +57,27 @@ export function ActionForm({
   projects,
   responsibles,
   canChooseProject,
+  initialAssigneeIds = [],
+  isAdmin,
+  activeProjectId,
+  activeClientId,
+  activeClientName,
 }: ActionFormProps) {
   const router = useRouter()
-  const supabase = createClient()
 
-  const [projectId, setProjectId] = useState(initialData?.project_id ?? projects[0]?.id ?? '')
+  const defaultProjectId =
+    initialData?.project_id ?? activeProjectId ?? projects[0]?.id ?? ''
+
+  const [projectId, setProjectId] = useState(defaultProjectId)
   const [title, setTitle] = useState(initialData?.title ?? '')
   const [description, setDescription] = useState(initialData?.description ?? '')
-  const [assignedTo, setAssignedTo] = useState(initialData?.assigned_to ?? '')
+
+  const [assignedIds, setAssignedIds] = useState<string[]>(() => {
+    if (initialAssigneeIds.length > 0) return initialAssigneeIds
+    if (initialData?.assigned_to) return [initialData.assigned_to]
+    return []
+  })
+
   const [status, setStatus] = useState<ActionStatus>(initialData?.status ?? 'not_started')
   const [priority, setPriority] = useState<ActionPriority>(initialData?.priority ?? 'medium')
   const [classification, setClassification] = useState<ActionClassification>(
@@ -68,106 +90,100 @@ export function ActionForm({
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Alerta de mismatch: admin selecionou projeto de cliente diferente do filtro ativo.
+  const [showMismatchAlert, setShowMismatchAlert] = useState(false)
+
   const statusOptions = useMemo(
     () => Object.entries(ACTION_STATUS_LABELS) as [ActionStatus, string][],
     []
   )
-
   const priorityOptions = useMemo(
     () => Object.entries(ACTION_PRIORITY_LABELS) as [ActionPriority, string][],
     []
   )
-
   const classificationOptions = useMemo(
     () => Object.entries(ACTION_CLASSIFICATION_LABELS) as [ActionClassification, string][],
     []
   )
 
+  function toggleAssignee(id: string) {
+    setAssignedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
   function validate() {
     const nextErrors: FormErrors = {}
-
     if (!projectId) nextErrors.project_id = 'Selecione o projeto vinculado.'
     if (!title.trim()) nextErrors.title = 'Informe o título da ação.'
-
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setFormError(null)
+  /** Detecta se o projeto selecionado pertence a cliente diferente do filtro ativo. */
+  function hasClientMismatch(): boolean {
+    if (!isAdmin || !activeClientId) return false
+    const selected = projects.find(p => p.id === projectId)
+    if (!selected) return false
+    return selected.client_id !== activeClientId
+  }
 
-    if (!validate()) return
-
+  async function persistAction() {
     setSaving(true)
 
-    const titleValue = title.trim()
+    const titleValue       = title.trim()
     const descriptionValue = description.trim() || null
-    const assignedToValue = assignedTo || null
-    const dueDateValue = dueDate || null
-    const notesValue = notes.trim() || null
-    const completionDateValue =
+    const dueDateValue     = dueDate || null
+    const notesValue       = notes.trim() || null
+    const completionDate =
       status === 'completed'
         ? initialData?.completion_date ?? new Date().toISOString()
         : null
-
-    const updatePayload: UpdateDto<'actions'> = {
-      title: titleValue,
-      description: descriptionValue,
-      assigned_to: assignedToValue,
-      due_date: dueDateValue,
-      priority,
-      status,
-      classification,
-      completion_date: completionDateValue,
-      notes: notesValue,
-      visible_to_client: visibleToClient,
-    }
+    const assignedTo = assignedIds[0] ?? null
 
     try {
-      const actionsTable = supabase.from('actions') as any
+      let result: { actionId?: string; error?: string }
 
       if (mode === 'create') {
-        const { data: authData } = await supabase.auth.getUser()
-        const insertPayload: InsertDto<'actions'> = {
-          project_id: projectId,
+        result = await createAction({
+          projectId,
           title: titleValue,
           description: descriptionValue,
-          assigned_to: assignedToValue,
-          due_date: dueDateValue,
+          assignedTo,
+          dueDate: dueDateValue,
           priority,
           status,
           classification,
-          completion_date: completionDateValue,
+          completionDate,
           notes: notesValue,
-          visible_to_client: visibleToClient,
-          created_by: authData.user?.id ?? null,
-        }
-
-        const { data, error } = await actionsTable
-          .insert(insertPayload)
-          .select('id')
-          .single()
-
-        if (error || !data) {
-          throw new Error(error?.message ?? 'Não foi possível criar a ação.')
-        }
-
-        router.push(`/dashboard/acoes/${(data as { id: string }).id}`)
-      } else if (initialData) {
-        const { data, error } = await actionsTable
-          .update(updatePayload)
-          .eq('id', initialData.id)
-          .select('id')
-          .single()
-
-        if (error || !data) {
-          throw new Error(error?.message ?? 'Não foi possível atualizar a ação.')
-        }
-
-        router.push(`/dashboard/acoes/${(data as { id: string }).id}`)
+          visibleToClient,
+          assigneeIds: assignedIds,
+        })
+      } else {
+        if (!initialData) throw new Error('Dados iniciais ausentes para edição.')
+        result = await updateAction(initialData.id, {
+          projectId,
+          title: titleValue,
+          description: descriptionValue,
+          assignedTo,
+          dueDate: dueDateValue,
+          priority,
+          status,
+          classification,
+          completionDate,
+          notes: notesValue,
+          visibleToClient,
+          assigneeIds: assignedIds,
+        })
       }
 
+      if (result.error) {
+        setFormError(result.error)
+        return
+      }
+
+      const actionId = result.actionId!
+      router.push(`/dashboard/acoes/${actionId}`)
       router.refresh()
     } catch (error) {
       setFormError(
@@ -180,8 +196,66 @@ export function ActionForm({
     }
   }
 
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setFormError(null)
+    setShowMismatchAlert(false)
+
+    if (!validate()) return
+
+    if (hasClientMismatch()) {
+      setShowMismatchAlert(true)
+      return
+    }
+
+    await persistAction()
+  }
+
+  async function handleConfirmMismatch() {
+    setShowMismatchAlert(false)
+    await persistAction()
+  }
+
   return (
     <form onSubmit={handleSubmit} className="card p-6 space-y-6">
+
+      {/* Alerta de mismatch de cliente */}
+      {showMismatchAlert && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-900">
+                Cliente diferente do filtro ativo
+              </p>
+              <p className="mt-1 text-sm text-amber-800">
+                O cliente do projeto selecionado é diferente do cliente aplicado no filtro atual
+                {activeClientName ? ` (${activeClientName})` : ''}.
+                Deseja continuar mesmo assim?
+              </p>
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowMismatchAlert(false)}
+                  className="btn-secondary text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmMismatch}
+                  className="btn-primary text-sm"
+                  disabled={saving}
+                >
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  Continuar mesmo assim
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-5 md:grid-cols-2">
         {initialData?.business_id && (
           <div>
@@ -201,7 +275,7 @@ export function ActionForm({
             value={projectId}
             onChange={event => setProjectId(event.target.value)}
             className="input"
-            disabled={saving || mode === 'edit' || !canChooseProject}
+            disabled={saving || !canChooseProject}
           >
             <option value="">Selecione</option>
             {projects.map(project => (
@@ -211,26 +285,49 @@ export function ActionForm({
             ))}
           </select>
           {errors.project_id && <p className="mt-1 text-xs text-red-600">{errors.project_id}</p>}
+          {!canChooseProject && activeClientName && (
+            <p className="mt-1 text-xs text-neutral-500">
+              Cliente: {activeClientName}
+            </p>
+          )}
         </div>
 
-        <div>
-          <label htmlFor="assigned_to" className="label">
-            Responsável
-          </label>
-          <select
-            id="assigned_to"
-            value={assignedTo}
-            onChange={event => setAssignedTo(event.target.value)}
-            className="input"
-            disabled={saving}
-          >
-            <option value="">Não definido</option>
-            {responsibles.map(option => (
-              <option key={option.id} value={option.id}>
-                {option.full_name}
-              </option>
-            ))}
-          </select>
+        {/* Seleção múltipla de responsáveis via checkboxes */}
+        <div className="md:col-span-2">
+          <p className="label mb-2">Responsáveis</p>
+          {responsibles.length === 0 ? (
+            <p className="text-sm text-neutral-400">Nenhum responsável disponível.</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {responsibles.map(option => {
+                const checked = assignedIds.includes(option.id)
+                return (
+                  <label
+                    key={option.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
+                      checked
+                        ? 'border-brand-300 bg-brand-50 text-brand-800'
+                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                    } ${saving ? 'pointer-events-none opacity-60' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAssignee(option.id)}
+                      disabled={saving}
+                      className="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-sm font-medium">{option.full_name}</span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
+          {assignedIds.length === 0 && (
+            <p className="mt-1.5 text-xs text-neutral-400">
+              Nenhum responsável selecionado — ação ficará sem responsável.
+            </p>
+          )}
         </div>
 
         <div className="md:col-span-2">
@@ -384,10 +481,17 @@ export function ActionForm({
       )}
 
       <div className="flex items-center justify-end gap-3">
-        <Link href={initialData ? `/dashboard/acoes/${initialData.id}` : '/dashboard/acoes'} className="btn-secondary">
+        <Link
+          href={initialData ? `/dashboard/acoes/${initialData.id}` : '/dashboard/acoes'}
+          className="btn-secondary"
+        >
           Cancelar
         </Link>
-        <button type="submit" className="btn-primary" disabled={saving}>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={saving || showMismatchAlert}
+        >
           {saving && <Loader2 size={16} className="animate-spin" />}
           {mode === 'create' ? 'Criar ação' : 'Salvar alterações'}
         </button>
