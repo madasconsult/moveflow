@@ -282,21 +282,16 @@ export function RateAssessmentWorkspace({
           : { weight: item.weight, score: item.score }
       })
 
-      const updatePromises = axisEntries.map(entry =>
-        itemsTable
+      for (const entry of axisEntries) {
+        const { error: itemError } = await itemsTable
           .update({
             score: entry.score,
             weighted_score: entry.weightedScore,
             notes: entry.notes,
           })
           .eq('id', entry.item.id)
-      )
 
-      const itemResults = await Promise.all(updatePromises)
-      const itemError = itemResults.find(result => result.error)?.error
-
-      if (itemError) {
-        throw new Error(itemError.message)
+        if (itemError) throw new Error(itemError.message)
       }
 
       const { error: versionError } = await versionsTable
