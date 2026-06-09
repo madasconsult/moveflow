@@ -155,6 +155,16 @@ npm run gen:types    # Gera tipos TypeScript do schema Supabase
 
 ---
 
+## Documentação técnica
+
+| Documento | Conteúdo |
+|---|---|
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Princípios de segurança, padrões de RLS, decisões de governança e checklist |
+| [`docs/PERMISSION_MATRIX.md`](docs/PERMISSION_MATRIX.md) | Matriz de permissões por perfil e módulo |
+| [`docs/MOVE_REPORT.md`](docs/MOVE_REPORT.md) | Módulo de relatórios e briefing para IA |
+
+---
+
 ## Próximas fases
 
 | Fase | Escopo |
