@@ -40,6 +40,8 @@ interface ActionFormProps {
   isAdmin: boolean
   /** ID do projeto ativo no filtro global (cookie) */
   activeProjectId?: string | null
+  /** Nome do projeto ativo — para exibição no aviso de divergência */
+  activeProjectName?: string | null
   /** client_id do projeto ativo — para detectar mismatch de cliente */
   activeClientId?: string | null
   /** Nome do cliente ativo — para exibição contextual */
@@ -60,6 +62,7 @@ export function ActionForm({
   initialAssigneeIds = [],
   isAdmin,
   activeProjectId,
+  activeProjectName,
   activeClientId,
   activeClientName,
 }: ActionFormProps) {
@@ -120,12 +123,18 @@ export function ActionForm({
     return Object.keys(nextErrors).length === 0
   }
 
-  /** Detecta se o projeto selecionado pertence a cliente diferente do filtro ativo. */
-  function hasClientMismatch(): boolean {
-    if (!isAdmin || !activeClientId) return false
-    const selected = projects.find(p => p.id === projectId)
-    if (!selected) return false
-    return selected.client_id !== activeClientId
+  /**
+   * Detecta se o projeto selecionado diverge do filtro ativo (projeto ou cliente diferente).
+   * Aplica apenas na criação — na edição o admin age intencionalmente.
+   */
+  function hasFilterMismatch(): boolean {
+    if (!isAdmin || mode !== 'create') return false
+    if (activeProjectId && projectId !== activeProjectId) return true
+    if (activeClientId) {
+      const selected = projects.find(p => p.id === projectId)
+      if (selected && selected.client_id !== activeClientId) return true
+    }
+    return false
   }
 
   async function persistAction() {
@@ -203,7 +212,7 @@ export function ActionForm({
 
     if (!validate()) return
 
-    if (hasClientMismatch()) {
+    if (hasFilterMismatch()) {
       setShowMismatchAlert(true)
       return
     }
@@ -219,19 +228,19 @@ export function ActionForm({
   return (
     <form onSubmit={handleSubmit} className="card p-6 space-y-6">
 
-      {/* Alerta de mismatch de cliente */}
+      {/* Alerta de divergência: projeto selecionado ≠ projeto do filtro ativo */}
       {showMismatchAlert && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600" />
             <div className="flex-1">
               <p className="text-sm font-medium text-amber-900">
-                Cliente diferente do filtro ativo
+                Projeto diferente do filtro ativo
               </p>
               <p className="mt-1 text-sm text-amber-800">
-                O cliente do projeto selecionado é diferente do cliente aplicado no filtro atual
-                {activeClientName ? ` (${activeClientName})` : ''}.
-                Deseja continuar mesmo assim?
+                O projeto selecionado é diferente do projeto atualmente filtrado
+                {activeProjectName ? ` (${activeProjectName})` : activeClientName ? ` — cliente: ${activeClientName}` : ''}.
+                A ação será criada fora do escopo atualmente visível. Deseja continuar mesmo assim?
               </p>
               <div className="mt-3 flex items-center gap-3">
                 <button
@@ -285,9 +294,9 @@ export function ActionForm({
             ))}
           </select>
           {errors.project_id && <p className="mt-1 text-xs text-red-600">{errors.project_id}</p>}
-          {!canChooseProject && activeClientName && (
+          {!canChooseProject && activeProjectId && (
             <p className="mt-1 text-xs text-neutral-500">
-              Cliente: {activeClientName}
+              Projeto do filtro ativo{activeClientName ? ` · ${activeClientName}` : ''}.
             </p>
           )}
         </div>

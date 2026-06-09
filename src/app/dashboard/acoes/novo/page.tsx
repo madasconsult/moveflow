@@ -50,9 +50,10 @@ export default async function NewActionPage() {
   const projects: ProjectOption[] = (projectsRes.data as ProjectOption[] | null) ?? []
   const responsibles: ResponsibleOption[] = (responsiblesRes.data as ResponsibleOption[] | null) ?? []
 
-  const activeProjectId  = activeProjectContext.activeProjectId
-  const activeClientId   = activeProjectContext.activeProject?.client_id ?? null
-  const activeClientName = activeProjectContext.activeProject?.client_name ?? null
+  const activeProjectId   = activeProjectContext.activeProjectId
+  const activeProjectName = activeProjectContext.activeProject?.project_name ?? null
+  const activeClientId    = activeProjectContext.activeProject?.client_id ?? null
+  const activeClientName  = activeProjectContext.activeProject?.client_name ?? null
 
   // Non-admin só pode escolher projeto se não houver filtro ativo.
   const canChooseProject = isAdmin || !activeProjectId
@@ -73,6 +74,7 @@ export default async function NewActionPage() {
         canChooseProject={canChooseProject}
         isAdmin={isAdmin}
         activeProjectId={activeProjectId}
+        activeProjectName={activeProjectName}
         activeClientId={activeClientId}
         activeClientName={activeClientName}
       />
