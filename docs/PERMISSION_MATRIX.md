@@ -233,7 +233,7 @@ Governança:
 Quem vê:
 
 - `admin_faus`: ações dos projetos acessíveis.
-- `gestor_faus`: visão ampla.
+- `gestor_faus`: visão ampla de todos os projetos (intencional — ver §8).
 - `consultor_faus` principal: ações do próprio projeto.
 - `consultor_faus` suporte: ações dos projetos em que participa.
 - `cliente`: apenas ações do próprio cliente/projeto com `visible_to_client = true`.
@@ -241,16 +241,17 @@ Quem vê:
 Quem cria:
 
 - `admin_faus`.
-- `consultor_faus` principal do projeto.
+- `consultor_faus` membro do projeto (principal ou suporte).
 
 Quem edita:
 
 - `admin_faus`.
-- `consultor_faus` principal do projeto.
+- `consultor_faus` membro do projeto.
 
 Quem exclui/inativa:
 
-- Regra administrativa ou específica do módulo.
+- Apenas `admin_faus`. **Decisão de governança (Rodada G3):** exclusão definitiva de ações é admin-only.
+- Consultor não pode deletar ação — ação é evidência de gestão.
 - Cliente nunca exclui.
 
 Governança:
@@ -258,6 +259,7 @@ Governança:
 - `visible_to_client` é o campo que libera ação no Portal do Cliente.
 - Cliente não altera status, prazo, responsável, progresso ou visibilidade.
 - A experiência visual do portal deve se aproximar da visão interna sempre que possível, removendo apenas ações/campos/botões não permitidos.
+- DELETE na tabela `actions` é coberto exclusivamente pela policy `actions: admin acesso total`; `consultor_faus` não possui policy de DELETE.
 
 ### Diário de Bordo
 
@@ -512,6 +514,7 @@ Governança:
 - Dados liberados ao cliente precisam de campo/regra explícita de visibilidade.
 - Não usar `service_role` no client.
 - Não ampliar permissões por conveniência visual; primeiro documentar, depois implementar com RLS mínima.
+- **Exclusão definitiva de ações é admin-only** (Rodada G3): `consultor_faus` não tem policy de DELETE em `actions`.
 
 ## 5. Checkpoints de Estabilidade
 
@@ -543,9 +546,47 @@ Uso recomendado:
 - Portal do Cliente para demais módulos, preservando dados internos.
 - Filtros globais por cliente, filial, tipo de projeto, gestor e consultor principal.
 - Regras específicas para Consultor Suporte, incluindo quando pode editar ações atribuídas.
-- Política formal para escrita operacional de `gestor_faus`, se vier a ser necessária.
+- Política formal para escrita operacional de `gestor_faus`, se vier a ser necessária no futuro.
 - Revisão de permissões de documentos, reuniões e FSPs por tipo de exposição ao cliente.
 - Testes automatizados de autorização por perfil e papel no projeto.
+- Implementar fluxo de inativação de ações (soft delete por `admin_faus`) se surgir necessidade operacional.
+
+## 8. Decisões de Governança Formalizadas
+
+Esta seção registra decisões deliberadas que foram debatidas e aprovadas explicitamente. Não alterar sem nova aprovação documentada.
+
+### `gestor_faus` — Visão global intencional (Rodada G3, 2026-06-09)
+
+**Decisão:** `gestor_faus` mantém acesso de leitura global a todos os projetos e clientes. Esse comportamento é intencional.
+
+**Justificativa:**
+- `gestor_faus` é perfil de supervisão interna FAUS, não perfil operacional.
+- Precisa acompanhar a carteira completa de projetos para apoiar a gestão.
+- A visão ampla é uma funcionalidade do perfil, não uma falha de segurança.
+
+**Restrições:**
+- `gestor_faus` não tem escrita em nenhuma tabela operacional (somente SELECT).
+- Não deve ser concedido a consultores operacionais ou a usuários sem função de supervisão.
+- Se um `gestor_faus` precisar de escrita em algum módulo futuro, criar regra específica documentada separadamente.
+
+**Impacto em RLS:** Todas as policies `*_gestor_faus_read` são SELECT-only e cobrem todos os projetos sem filtro de `is_project_member`. Isso é correto e não deve ser alterado sem nova decisão.
+
+---
+
+### DELETE em `actions` — Admin-only (Rodada G3, 2026-06-09)
+
+**Decisão:** Exclusão definitiva de ações é restrita a `admin_faus`. `consultor_faus` não pode deletar ações.
+
+**Justificativa:**
+- Ação é evidência de gestão de projeto. Deve ser preservada como histórico auditável.
+- Consultor pode editar, concluir e alterar status de ações nos seus projetos.
+- Exclusão é ato irreversível que compromete rastreabilidade; exige autoridade administrativa.
+
+**Impacto em RLS:** A policy `actions: consultor acessa acoes dos seus projetos` (FOR ALL) foi substituída por três policies separadas (SELECT, INSERT, UPDATE) com `is_project_member`. Nenhuma policy de DELETE existe para `consultor_faus`. Admin cobre DELETE via `actions: admin acesso total` (FOR ALL), que permanece inalterado.
+
+**Impacto em código:** Nenhum fluxo de exclusão de ações existe no frontend ou em server actions. A única proteção necessária era em RLS.
+
+---
 
 ## 7. Checklist de Revisão Antes de Alterar Permissões
 
