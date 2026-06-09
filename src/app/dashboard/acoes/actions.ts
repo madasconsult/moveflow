@@ -25,6 +25,17 @@ export interface ActionFormPayload {
   notes: string | null
   visibleToClient: boolean
   assigneeIds: string[]
+  /** IDs de envolvidos externos já cadastrados a vincular */
+  externalStakeholderIds: string[]
+  /** Novos envolvidos externos a criar e vincular (criação inline no formulário) */
+  newExternalStakeholders: NewExternalStakeholder[]
+}
+
+export interface NewExternalStakeholder {
+  name: string
+  role_title: string | null
+  email: string | null
+  phone: string | null
 }
 
 type ActionResult =
@@ -89,6 +100,125 @@ async function syncAssignees(
   return null
 }
 
+/**
+ * Sincroniza envolvidos externos de uma ação.
+ * Rodada E: tabelas criadas em 20260609_round_e_external_stakeholders.sql.
+ *
+ * Fluxo:
+ *  1. Criar envolvidos novos em project_external_stakeholders (se ainda não existirem).
+ *  2. Remover todos os vínculos atuais em action_external_stakeholders.
+ *  3. Inserir os vínculos finais (existentes + recém-criados).
+ *
+ * Validação de integridade: todos os stakeholder_ids devem pertencer ao mesmo
+ * projeto da ação — rejeitado antes de qualquer escrita se houver divergência.
+ */
+async function syncExternalStakeholders(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  actionId: string,
+  actionProjectId: string,
+  existingIds: string[],
+  newStakeholders: NewExternalStakeholder[],
+  createdBy: string,
+): Promise<string | null> {
+  // 1. Validar que todos os IDs existentes pertencem ao projeto da ação.
+  if (existingIds.length > 0) {
+    const { data: validateRaw, error: validateError } = await (
+      supabase.from('project_external_stakeholders') as any
+    )
+      .select('id, project_id')
+      .in('id', existingIds)
+
+    if (validateError) {
+      return `Falha ao validar envolvidos externos: ${validateError.message}`
+    }
+
+    const rows = (validateRaw as { id: string; project_id: string }[] | null) ?? []
+    const wrongProject = rows.find(r => r.project_id !== actionProjectId)
+    if (wrongProject) {
+      return 'Um ou mais envolvidos externos pertencem a projeto diferente desta ação.'
+    }
+    if (rows.length !== existingIds.length) {
+      return 'Um ou mais envolvidos externos não foram encontrados.'
+    }
+  }
+
+  // 2. Criar novos envolvidos em project_external_stakeholders (ON CONFLICT ignora duplicatas).
+  const createdIds: string[] = []
+  for (const s of newStakeholders) {
+    const trimmedName = s.name.trim()
+    if (!trimmedName) continue
+
+    // Tenta inserir; se nome já existe no projeto (índice único case-insensitive), faz upsert
+    // buscando o existente para não perder o ID.
+    const insertRow = {
+      project_id: actionProjectId,
+      name:       trimmedName,
+      role_title: s.role_title?.trim() || null,
+      email:      s.email?.trim() || null,
+      phone:      s.phone?.trim() || null,
+      created_by: createdBy,
+    }
+
+    const { data: insertedRaw, error: insertError } = await (
+      supabase.from('project_external_stakeholders') as any
+    )
+      .insert(insertRow)
+      .select('id')
+      .single()
+
+    if (insertError) {
+      // Código 23505 = unique_violation (nome duplicado no projeto)
+      if (insertError.code === '23505') {
+        // Busca o existente pelo nome
+        const { data: existingRaw, error: lookupError } = await (
+          supabase.from('project_external_stakeholders') as any
+        )
+          .select('id')
+          .eq('project_id', actionProjectId)
+          .ilike('name', trimmedName)
+          .single()
+
+        if (lookupError || !existingRaw) {
+          return `Falha ao localizar envolvido existente "${trimmedName}": ${lookupError?.message ?? 'não encontrado'}`
+        }
+        createdIds.push((existingRaw as { id: string }).id)
+      } else {
+        return `Falha ao criar envolvido "${trimmedName}": ${insertError.message}`
+      }
+    } else {
+      createdIds.push((insertedRaw as { id: string }).id)
+    }
+  }
+
+  // 3. IDs finais = existentes validados + recém-criados (deduplica)
+  const finalIds = Array.from(new Set([...existingIds, ...createdIds]))
+
+  // 4. Remove vínculos anteriores
+  const { error: deleteError } = await (
+    supabase.from('action_external_stakeholders') as any
+  )
+    .delete()
+    .eq('action_id', actionId)
+
+  if (deleteError) {
+    return `Ação salva, mas falha ao limpar envolvidos externos: ${deleteError.message}`
+  }
+
+  // 5. Insere vínculos finais
+  if (finalIds.length > 0) {
+    const linkRows = finalIds.map(stakeholder_id => ({ action_id: actionId, stakeholder_id }))
+    const { error: linkError } = await (
+      supabase.from('action_external_stakeholders') as any
+    ).insert(linkRows)
+
+    if (linkError) {
+      return `Ação salva, mas falha ao vincular envolvidos externos: ${linkError.message}`
+    }
+  }
+
+  return null
+}
+
 export async function createAction(payload: ActionFormPayload): Promise<ActionResult> {
   const session = await getSessionWithProfile()
   if (session.status !== 'authenticated') return { error: 'Não autenticado.' }
@@ -133,6 +263,16 @@ export async function createAction(payload: ActionFormPayload): Promise<ActionRe
 
   const assigneeError = await syncAssignees(supabase, actionId, payload.assigneeIds)
   if (assigneeError) return { error: assigneeError }
+
+  const externalError = await syncExternalStakeholders(
+    supabase,
+    actionId,
+    payload.projectId,
+    payload.externalStakeholderIds,
+    payload.newExternalStakeholders,
+    profile.id,
+  )
+  if (externalError) return { error: externalError }
 
   return { actionId }
 }
@@ -180,6 +320,9 @@ export async function updateAction(
     updatePayload.project_id = payload.projectId
   }
 
+  // O project_id efetivo para validação de envolvidos externos é o projeto FINAL da ação
+  const effectiveProjectId = updatePayload.project_id ?? currentAction.project_id
+
   // `as any` no query builder: mesmo padrão do INSERT — Supabase SSR 0.4.x infere `never` sem o cast.
   // O payload continua tipado como ActionUpdatePayload; o `as any` isola apenas o query builder.
   const { data, error } = await (supabase.from('actions') as any)
@@ -192,8 +335,20 @@ export async function updateAction(
     return { error: error?.message ?? 'Não foi possível atualizar a ação.' }
   }
 
-  const assigneeError = await syncAssignees(supabase, (data as { id: string }).id, payload.assigneeIds)
+  const savedId = (data as { id: string }).id
+
+  const assigneeError = await syncAssignees(supabase, savedId, payload.assigneeIds)
   if (assigneeError) return { error: assigneeError }
 
-  return { actionId: (data as { id: string }).id }
+  const externalError = await syncExternalStakeholders(
+    supabase,
+    savedId,
+    effectiveProjectId,
+    payload.externalStakeholderIds,
+    payload.newExternalStakeholders,
+    profile.id,
+  )
+  if (externalError) return { error: externalError }
+
+  return { actionId: savedId }
 }

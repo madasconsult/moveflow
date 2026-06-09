@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { getActiveProjectContext } from '@/lib/active-project/server'
 import { ActionForm } from '@/components/actions/ActionForm'
-import type { Action, ActionAssignee, Profile, Project, UserRole } from '@/types/database.types'
+import type { Action, ActionAssignee, Profile, Project, ProjectExternalStakeholder, UserRole } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Editar Ação' }
 
@@ -55,7 +55,7 @@ export default async function EditActionPage({ params }: PageProps) {
 
   if (!isAdmin && !isLeadConsultant) redirect('/unauthorized?reason=forbidden')
 
-  const [projectsRes, responsiblesRes, assigneesRes, activeProjectContext] = await Promise.all([
+  const [projectsRes, responsiblesRes, assigneesRes, externalStakeholdersRes, externalLinksRes, activeProjectContext] = await Promise.all([
     isAdmin
       ? supabase.from('projects').select('id, project_name, client_id').order('project_name')
       : Promise.resolve({ data: projectPermission ? [projectPermission] : [] as ProjectOption[] | null }),
@@ -75,6 +75,16 @@ export default async function EditActionPage({ params }: PageProps) {
       .from('action_assignees' as any)
       .select('user_id')
       .eq('action_id', action.id),
+    // Envolvidos externos ativos do projeto desta ação
+    (supabase.from('project_external_stakeholders') as any)
+      .select('id, project_id, name, role_title, email, phone, is_active, created_at, created_by')
+      .eq('project_id', action.project_id)
+      .eq('is_active', true)
+      .order('name'),
+    // Vínculos de envolvidos externos já associados a esta ação
+    (supabase.from('action_external_stakeholders') as any)
+      .select('stakeholder_id')
+      .eq('action_id', action.id),
     getActiveProjectContext(session.profile),
   ])
 
@@ -88,6 +98,12 @@ export default async function EditActionPage({ params }: PageProps) {
       : action.assigned_to
         ? [action.assigned_to]
         : []
+
+  const projectStakeholders: ProjectExternalStakeholder[] =
+    (externalStakeholdersRes.data as ProjectExternalStakeholder[] | null) ?? []
+
+  const initialExternalStakeholderIds: string[] =
+    ((externalLinksRes.data as { stakeholder_id: string }[] | null) ?? []).map(r => r.stakeholder_id)
 
   const activeClientId   = activeProjectContext.activeProject?.client_id ?? null
   const activeClientName = activeProjectContext.activeProject?.client_name ?? null
@@ -111,6 +127,8 @@ export default async function EditActionPage({ params }: PageProps) {
         isAdmin={isAdmin}
         activeClientId={activeClientId}
         activeClientName={activeClientName}
+        projectStakeholders={projectStakeholders}
+        initialExternalStakeholderIds={initialExternalStakeholderIds}
       />
     </div>
   )

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionWithProfile } from '@/lib/supabase/auth'
 import { getActiveProjectContext } from '@/lib/active-project/server'
 import { ActionForm } from '@/components/actions/ActionForm'
-import type { Profile, UserRole } from '@/types/database.types'
+import type { Profile, ProjectExternalStakeholder, UserRole } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Nova Ação' }
 
@@ -58,6 +58,15 @@ export default async function NewActionPage() {
   // Non-admin só pode escolher projeto se não houver filtro ativo.
   const canChooseProject = isAdmin || !activeProjectId
 
+  // Busca envolvidos externos ativos do projeto ativo (para seleção no formulário)
+  const projectStakeholders: ProjectExternalStakeholder[] = activeProjectId
+    ? ((await (supabase.from('project_external_stakeholders') as any)
+        .select('id, project_id, name, role_title, email, phone, is_active, created_at, created_by')
+        .eq('project_id', activeProjectId)
+        .eq('is_active', true)
+        .order('name')).data as ProjectExternalStakeholder[] | null) ?? []
+    : []
+
   return (
     <div className="max-w-5xl space-y-6">
       <div>
@@ -77,6 +86,7 @@ export default async function NewActionPage() {
         activeProjectName={activeProjectName}
         activeClientId={activeClientId}
         activeClientName={activeClientName}
+        projectStakeholders={projectStakeholders}
       />
     </div>
   )

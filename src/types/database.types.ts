@@ -1035,6 +1035,26 @@ export type ActionAssignee = {
   user_id: string
   created_at: string
 }
+
+// Tipos manuais — tabelas criadas na Rodada E (não estão no schema gerado automaticamente)
+export type ProjectExternalStakeholder = {
+  id: string
+  project_id: string
+  name: string
+  role_title: string | null
+  email: string | null
+  phone: string | null
+  is_active: boolean
+  created_at: string
+  created_by: string | null
+}
+
+export type ActionExternalStakeholder = {
+  id: string
+  action_id: string
+  stakeholder_id: string
+  created_at: string
+}
 export type Meeting         = Tables<'meetings'>
 export type Document        = Tables<'documents'>
 export type DocumentFolder  = Tables<'document_folders'>

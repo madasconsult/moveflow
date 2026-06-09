@@ -16,7 +16,7 @@ import {
 } from '@/lib/utils'
 import { ActionStepsManager } from '@/components/actions/ActionStepsManager'
 import { MarkActionCompletedButton } from '@/components/actions/MarkActionCompletedButton'
-import type { Action, ActionAssignee, ActionStep, Profile, Project } from '@/types/database.types'
+import type { Action, ActionAssignee, ActionStep, Profile, Project, ProjectExternalStakeholder } from '@/types/database.types'
 
 export const metadata: Metadata = { title: 'Detalhe da Ação' }
 
@@ -59,7 +59,7 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
 
   if (!action) notFound()
 
-  const [projectRes, assigneesRes, stepsRes] = await Promise.all([
+  const [projectRes, assigneesRes, stepsRes, externalLinksRes] = await Promise.all([
     supabase.from('projects').select('id, project_name, main_consultant_id').eq('id', action.project_id).single(),
     supabase
       .from('action_assignees' as any)
@@ -71,6 +71,9 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
       .eq('action_id', action.id)
       .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true }),
+    (supabase.from('action_external_stakeholders') as any)
+      .select('stakeholder_id')
+      .eq('action_id', action.id),
   ])
 
   const project    = (projectRes.data as ProjectPermissionLookup | null) ?? null
@@ -85,15 +88,32 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
         ? [action.assigned_to]
         : []
 
-  // Busca perfis dos responsáveis
-  const responsibles: ResponsibleLookup[] =
+  // IDs de envolvidos externos vinculados a esta ação
+  const externalStakeholderIds: string[] =
+    ((externalLinksRes.data as { stakeholder_id: string }[] | null) ?? []).map(r => r.stakeholder_id)
+
+  // Busca perfis dos responsáveis e dados dos envolvidos externos em paralelo
+  const [responsiblesRaw, externalStakeholdersRaw] = await Promise.all([
     assigneeIds.length > 0
-      ? ((await supabase
+      ? supabase
           .from('profiles')
           .select('id, full_name, email')
           .in('id', assigneeIds)
-          .order('full_name')).data as ResponsibleLookup[] | null) ?? []
-      : []
+          .order('full_name')
+      : Promise.resolve({ data: [] as ResponsibleLookup[] | null }),
+    externalStakeholderIds.length > 0
+      ? (supabase.from('project_external_stakeholders') as any)
+          .select('id, name, role_title, email, phone')
+          .in('id', externalStakeholderIds)
+          .order('name')
+      : Promise.resolve({ data: [] as ProjectExternalStakeholder[] | null }),
+  ])
+
+  const responsibles: ResponsibleLookup[] =
+    (responsiblesRaw.data as ResponsibleLookup[] | null) ?? []
+
+  const externalStakeholders: Pick<ProjectExternalStakeholder, 'id' | 'name' | 'role_title' | 'email' | 'phone'>[] =
+    (externalStakeholdersRaw.data as ProjectExternalStakeholder[] | null) ?? []
 
   const canManageAction =
     session.profile.role === 'admin_faus' ||
@@ -165,7 +185,7 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
               <p className="text-sm text-neutral-800">{project?.project_name ?? 'Projeto vinculado'}</p>
             </div>
 
-            {/* Responsáveis — múltiplos com fallback */}
+            {/* Responsáveis internos — múltiplos com fallback */}
             <div>
               <p className="mb-1 text-xs text-neutral-400">
                 {responsibles.length > 1 ? 'Responsáveis' : 'Responsável'}
@@ -179,6 +199,25 @@ export default async function ActionDetailPage({ params, searchParams }: PagePro
                       <p className="text-sm text-neutral-800">{r.full_name}</p>
                       {r.email && (
                         <p className="text-xs text-neutral-400">{r.email}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Participantes do Cliente (envolvidos externos) */}
+            <div>
+              <p className="mb-1 text-xs text-neutral-400">Participantes do Cliente</p>
+              {externalStakeholders.length === 0 ? (
+                <p className="text-sm text-neutral-800">Nenhum participante registrado</p>
+              ) : (
+                <ul className="space-y-1">
+                  {externalStakeholders.map(s => (
+                    <li key={s.id}>
+                      <p className="text-sm text-neutral-800">{s.name}</p>
+                      {s.role_title && (
+                        <p className="text-xs text-neutral-400">{s.role_title}</p>
                       )}
                     </li>
                   ))}
