@@ -75,6 +75,7 @@ export function ReportCenterClient({ activeProject, canUseAiBriefing, canUseAiIn
   const [insightsLoading, setInsightsLoading] = useState(false)
   const [insights, setInsights] = useState<AiReportInsights | null>(null)
   const [insightsMessage, setInsightsMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
+  const [customQuestion, setCustomQuestion] = useState('')
 
   const periodInvalid = useMemo(() => startDate > endDate, [startDate, endDate])
 
@@ -206,6 +207,7 @@ export function ReportCenterClient({ activeProject, canUseAiBriefing, canUseAiIn
           startDate,
           endDate,
           consultantComment: consultantComment || null,
+          customQuestion: customQuestion.trim() || null,
         }),
       })
 
@@ -408,7 +410,7 @@ export function ReportCenterClient({ activeProject, canUseAiBriefing, canUseAiIn
 
       {canUseAiInsights && (
         <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
-          <div className="grid gap-5 border-b border-neutral-100 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
+          <div className="space-y-5 border-b border-neutral-100 p-5">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0AFAB9]">
                 Admin FAUS — Fase I
@@ -421,19 +423,42 @@ export function ReportCenterClient({ activeProject, canUseAiBriefing, canUseAiIn
                 Geração manual. Nenhuma análise é criada automaticamente ao abrir o relatório.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleGenerateInsights}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={insightsLoading || loadingType !== null}
-            >
-              {insightsLoading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Sparkles size={16} />
-              )}
-              {insightsLoading ? 'Gerando análise...' : 'Gerar análise com IA'}
-            </button>
+
+            <div>
+              <label htmlFor="ai-custom-question" className="label">
+                O que você quer analisar neste projeto?
+              </label>
+              <textarea
+                id="ai-custom-question"
+                value={customQuestion}
+                onChange={event => setCustomQuestion(event.target.value.slice(0, 500))}
+                maxLength={500}
+                className="input min-h-20 resize-y"
+                placeholder="Ex.: Quais ações estão mais críticas para destravar este projeto?"
+              />
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+                <p>
+                  Faça uma pergunta sobre o projeto, ações, riscos, atrasos ou próximos passos. A IA responderá com base nos dados disponíveis. Campo opcional.
+                </p>
+                <p>{customQuestion.length}/500 caracteres</p>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={handleGenerateInsights}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={insightsLoading || loadingType !== null}
+              >
+                {insightsLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                {insightsLoading ? 'Analisando...' : 'Analisar com IA'}
+              </button>
+            </div>
           </div>
 
           {insightsMessage && (

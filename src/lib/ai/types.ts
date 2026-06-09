@@ -40,4 +40,6 @@ export interface AiReportInsightsRequest {
   endDate: string
   /** Comentário consultivo opcional do consultor (sanitizado antes do envio). */
   consultantComment?: string | null
+  /** Pergunta específica do usuário sobre o projeto/período (máx. 500 caracteres). */
+  customQuestion?: string | null
 }

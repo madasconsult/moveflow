@@ -30,11 +30,14 @@ import { generateReportInsights, AiInsightsError } from '@/lib/ai/generate-repor
 
 export const runtime = 'nodejs'
 
+const CUSTOM_QUESTION_MAX_LENGTH = 500
+
 interface RequestPayload {
   projectId?: unknown
   startDate?: unknown
   endDate?: unknown
   consultantComment?: unknown
+  customQuestion?: unknown
 }
 
 export async function POST(request: Request) {
@@ -100,9 +103,19 @@ export async function POST(request: Request) {
   const consultantComment = sanitizeConsultantComment(payload.consultantComment)
   const context = buildReportContext(data, consultantComment)
 
+  // ── 8b. Pergunta específica do usuário ────────────────────────────────────
+  const rawQuestion = typeof payload.customQuestion === 'string' ? payload.customQuestion.trim() : ''
+  if (rawQuestion.length > CUSTOM_QUESTION_MAX_LENGTH) {
+    return NextResponse.json(
+      { error: 'A pergunta deve ter no máximo 500 caracteres.' },
+      { status: 400 }
+    )
+  }
+  const customQuestion = rawQuestion || undefined
+
   // ── 9. Geração de insights ────────────────────────────────────────────────
   try {
-    const insights = await generateReportInsights(context)
+    const insights = await generateReportInsights(context, customQuestion)
     return NextResponse.json({
       insights,
       meta: {

@@ -95,10 +95,14 @@ function parseInsights(raw: string): AiReportInsights | null {
  * Gera AI Insights para um relatório com base no contexto sanitizado.
  *
  * @param context - String de contexto construída por buildReportContext()
+ * @param customQuestion - Pergunta opcional do usuário (já validada e sanitizada pela rota)
  * @returns AiReportInsights estruturado
  * @throws AiInsightsError em caso de falha na API ou parse
  */
-export async function generateReportInsights(context: string): Promise<AiReportInsights> {
+export async function generateReportInsights(
+  context: string,
+  customQuestion?: string
+): Promise<AiReportInsights> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     throw new AiInsightsError('OPENAI_API_KEY não configurada.', 'no_key')
@@ -107,13 +111,19 @@ export async function generateReportInsights(context: string): Promise<AiReportI
   const client = new OpenAI({ apiKey })
   const model = resolveModel()
 
+  // A pergunta é inserida após os dados do projeto com separador explícito,
+  // tratada como dado de entrada — nunca como instrução de sistema.
+  const userContent = customQuestion
+    ? `${context}\n\n---\n[PERGUNTA DO USUÁRIO]\n${customQuestion}\n---\n\nCom base nos dados acima, responda à pergunta de forma direta, usando números e evidências do contexto. Se os dados não sustentarem a resposta, declare em data_limitations.`
+    : context
+
   let rawContent: string | null
   try {
     const completion = await client.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: REPORT_INSIGHTS_SYSTEM_PROMPT },
-        { role: 'user', content: context },
+        { role: 'user', content: userContent },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.3,
