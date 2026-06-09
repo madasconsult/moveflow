@@ -153,14 +153,48 @@ export interface AiInsightsData {
 
 // ── Loader ────────────────────────────────────────────────────────────────────
 
+/** Empty/fallback AiInsightsData used when the entire load fails. */
+function emptyAiInsightsData(): AiInsightsData {
+  return {
+    kpis: [],
+    kpiTargets: [],
+    kpiRecords: [],
+    fsps: [],
+    diagnosis: null,
+    rateVersion: null,
+    rateItems: [],
+    diaryEntries: [],
+    diaryDeliverables: [],
+  }
+}
+
 /**
  * Loads the enriched Project Intelligence Context for AI Insights.
+ *
+ * This function never throws: any unhandled error is caught and logged as a
+ * safe server-side warning. The caller always receives a valid AiInsightsData
+ * object — empty if a complete failure occurs.
  *
  * @param projectId - The validated project UUID (ownership already verified by the route).
  * @param startDate - ISO date string (YYYY-MM-DD) for the analysis period start.
  * @param endDate   - ISO date string (YYYY-MM-DD) for the analysis period end.
  */
 export async function loadAiInsightsData(
+  projectId: string,
+  startDate: string,
+  endDate: string
+): Promise<AiInsightsData> {
+  try {
+    return await loadAiInsightsDataCore(projectId, startDate, endDate)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'erro desconhecido'
+    console.warn('[AI Insights] loadAiInsightsData falhou completamente — retornando contexto vazio.', msg)
+    return emptyAiInsightsData()
+  }
+}
+
+/** Internal implementation — never call directly from outside this module. */
+async function loadAiInsightsDataCore(
   projectId: string,
   startDate: string,
   endDate: string
@@ -198,6 +232,12 @@ export async function loadAiInsightsData(
       .limit(DIARY_ENTRY_LIMIT),
   ])
 
+  // Log individual module errors without exposing sensitive data
+  if (allKpisRes.error) console.warn('[AI Insights] kpis query error:', allKpisRes.error.message)
+  if (allFspsRes.error) console.warn('[AI Insights] fsps query error:', allFspsRes.error.message)
+  if (diagnosisRes.error) console.warn('[AI Insights] project_diagnoses query error:', diagnosisRes.error.message)
+  if (diaryEntriesRes.error) console.warn('[AI Insights] diary_entries query error:', diaryEntriesRes.error.message)
+
   const allKpis = (allKpisRes.data as AiKpi[] | null) ?? []
   const allFsps = (allFspsRes.data as AiFsp[] | null) ?? []
   const diagnosis = (diagnosisRes.data as AiDiagnosis | null) ?? null
@@ -216,7 +256,7 @@ export async function loadAiInsightsData(
           .lte('start_date', endDate)
           .gte('end_date', startDate)
           .order('start_date', { ascending: true })
-      : Promise.resolve({ data: [] as AiKpiTarget[] | null }),
+      : Promise.resolve({ data: [] as AiKpiTarget[] | null, error: null }),
 
     allKpiIds.length > 0
       ? supabase
@@ -226,7 +266,7 @@ export async function loadAiInsightsData(
           .gte('recorded_at', startDate)
           .lte('recorded_at', `${endDate}T23:59:59.999Z`)
           .order('recorded_at', { ascending: false })
-      : Promise.resolve({ data: [] as AiKpiRecord[] | null }),
+      : Promise.resolve({ data: [] as AiKpiRecord[] | null, error: null }),
 
     diagnosis
       ? supabase
@@ -234,7 +274,7 @@ export async function loadAiInsightsData(
           .select('id')
           .eq('diagnosis_id', diagnosis.id)
           .maybeSingle()
-      : Promise.resolve({ data: null as { id: string } | null }),
+      : Promise.resolve({ data: null as { id: string } | null, error: null }),
 
     diaryEntryIds.length > 0
       ? supabase
@@ -242,8 +282,14 @@ export async function loadAiInsightsData(
           .select('diary_entry_id, description, position, status, completion_date, is_carried_over')
           .in('diary_entry_id', diaryEntryIds)
           .order('position', { ascending: true })
-      : Promise.resolve({ data: [] as AiDiaryDeliverable[] | null }),
+      : Promise.resolve({ data: [] as AiDiaryDeliverable[] | null, error: null }),
   ])
+
+  // Log individual module errors without exposing sensitive data
+  if (allTargetsRes.error) console.warn('[AI Insights] kpi_target_periods query error:', allTargetsRes.error.message)
+  if (allRecordsRes.error) console.warn('[AI Insights] kpi_period_records query error:', allRecordsRes.error.message)
+  if (rateAssessmentRes.error) console.warn('[AI Insights] rate_assessments query error:', rateAssessmentRes.error.message)
+  if (deliverablesRes.error) console.warn('[AI Insights] diary_deliverables query error:', deliverablesRes.error.message)
 
   const allKpiTargets = (allTargetsRes.data as AiKpiTarget[] | null) ?? []
   const allKpiRecords = (allRecordsRes.data as AiKpiRecord[] | null) ?? []
@@ -294,23 +340,38 @@ export async function loadAiInsightsData(
   let rateItems: AiRateItem[] = []
 
   if (rateAssessment) {
-    const versionRes = await supabase
-      .from('rate_assessment_versions')
-      .select('id, version_number, version_name, assessment_date, profile_type, overall_score')
-      .eq('assessment_id', rateAssessment.id)
-      .order('version_number', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    try {
+      const versionRes = await supabase
+        .from('rate_assessment_versions')
+        .select('id, version_number, version_name, assessment_date, profile_type, overall_score')
+        .eq('assessment_id', rateAssessment.id)
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-    rateVersion = (versionRes.data as AiRateVersion | null) ?? null
+      if (versionRes.error) {
+        console.warn('[AI Insights] rate_assessment_versions query error:', versionRes.error.message)
+      }
 
-    if (rateVersion) {
-      const itemsRes = await supabase
-        .from('rate_assessment_items')
-        .select('version_id, axis, criterion, weight, score')
-        .eq('version_id', rateVersion.id)
+      rateVersion = (versionRes.data as AiRateVersion | null) ?? null
 
-      rateItems = (itemsRes.data as AiRateItem[] | null) ?? []
+      if (rateVersion) {
+        const itemsRes = await supabase
+          .from('rate_assessment_items')
+          .select('version_id, axis, criterion, weight, score')
+          .eq('version_id', rateVersion.id)
+
+        if (itemsRes.error) {
+          console.warn('[AI Insights] rate_assessment_items query error:', itemsRes.error.message)
+        }
+
+        rateItems = (itemsRes.data as AiRateItem[] | null) ?? []
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'erro desconhecido'
+      console.warn('[AI Insights] RATE section falhou — RATE omitido da análise:', msg)
+      rateVersion = null
+      rateItems = []
     }
   }
 

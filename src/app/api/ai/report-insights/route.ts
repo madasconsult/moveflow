@@ -27,7 +27,7 @@ import {
 import { sanitizeConsultantComment } from '@/components/reports/pdf/utils'
 import { buildReportContext } from '@/lib/ai/build-report-context'
 import { generateReportInsights, AiInsightsError } from '@/lib/ai/generate-report-insights'
-import { loadAiInsightsData } from '@/lib/ai/load-insights-data'
+import { loadAiInsightsData, type AiInsightsData } from '@/lib/ai/load-insights-data'
 
 export const runtime = 'nodejs'
 
@@ -92,9 +92,18 @@ export async function POST(request: Request) {
   )
 
   // ── 7. Dados do relatório + contexto enriquecido (paralelo) ─────────────────
+  // loadAiInsightsData is throw-safe (catches internally), but the .catch()
+  // here is a belt-and-suspenders guard: if for any reason it rejects, the
+  // main report flow continues without extended context rather than 500ing.
   const [data, insightsData] = await Promise.all([
     loadReportData(projectId, normalizedPeriod.startDate, normalizedPeriod.endDate),
-    loadAiInsightsData(projectId, normalizedPeriod.startDate, normalizedPeriod.endDate),
+    loadAiInsightsData(projectId, normalizedPeriod.startDate, normalizedPeriod.endDate).catch(
+      (e: unknown) => {
+        const msg = e instanceof Error ? e.message : 'erro desconhecido'
+        console.warn('[AI Insights] loadAiInsightsData rejeitou na rota — contexto enriquecido omitido:', msg)
+        return undefined as AiInsightsData | undefined
+      }
+    ),
   ])
 
   if (!data) {
