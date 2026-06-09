@@ -1,14 +1,16 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Clipboard, Download, FileDown, FileText, Loader2 } from 'lucide-react'
+import { Clipboard, Download, FileDown, FileText, Loader2, Sparkles } from 'lucide-react'
 import type { ActiveProjectOption } from '@/lib/active-project/server'
 import type { ReportType } from '@/components/reports/pdf/types'
+import type { AiReportInsights } from '@/lib/ai/types'
 import { CONSULTANT_COMMENT_MAX_LENGTH } from '@/components/reports/pdf/utils'
 
 interface ReportCenterClientProps {
   activeProject: ActiveProjectOption
   canUseAiBriefing: boolean
+  canUseAiInsights: boolean
 }
 
 interface ReportCardConfig {
@@ -61,7 +63,7 @@ function getDefaultEndDate() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export function ReportCenterClient({ activeProject, canUseAiBriefing }: ReportCenterClientProps) {
+export function ReportCenterClient({ activeProject, canUseAiBriefing, canUseAiInsights }: ReportCenterClientProps) {
   const [startDate, setStartDate] = useState(getDefaultStartDate)
   const [endDate, setEndDate] = useState(getDefaultEndDate)
   const [consultantComment, setConsultantComment] = useState('')
@@ -70,6 +72,9 @@ export function ReportCenterClient({ activeProject, canUseAiBriefing }: ReportCe
   const [briefingText, setBriefingText] = useState('')
   const [briefingMessage, setBriefingMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [insights, setInsights] = useState<AiReportInsights | null>(null)
+  const [insightsMessage, setInsightsMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
 
   const periodInvalid = useMemo(() => startDate > endDate, [startDate, endDate])
 
@@ -179,6 +184,71 @@ export function ReportCenterClient({ activeProject, canUseAiBriefing }: ReportCe
         type: 'error',
         text: 'Não foi possível copiar automaticamente. Selecione o texto do briefing e copie manualmente.',
       })
+    }
+  }
+
+  async function handleGenerateInsights() {
+    setInsightsMessage(null)
+    setInsights(null)
+
+    if (periodInvalid) {
+      setInsightsMessage({ type: 'error', text: 'A data inicial não pode ser maior que a data final.' })
+      return
+    }
+
+    setInsightsLoading(true)
+    try {
+      const response = await fetch('/api/ai/report-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: activeProject.id,
+          startDate,
+          endDate,
+          consultantComment: consultantComment || null,
+        }),
+      })
+
+      const payload = await response.json().catch(() => null)
+
+      if (response.status === 503) {
+        setInsightsMessage({
+          type: 'info',
+          text: payload?.error ?? 'AI Insights não está habilitado neste ambiente.',
+        })
+        return
+      }
+
+      if (response.status === 403) {
+        setInsightsMessage({
+          type: 'error',
+          text: 'Sem permissão para gerar análise com IA.',
+        })
+        return
+      }
+
+      if (!response.ok) {
+        setInsightsMessage({
+          type: 'error',
+          text: payload?.error ?? 'Não foi possível gerar a análise. Tente novamente.',
+        })
+        return
+      }
+
+      if (!payload?.insights) {
+        setInsightsMessage({ type: 'error', text: 'A análise retornada está incompleta. Tente novamente.' })
+        return
+      }
+
+      setInsights(payload.insights)
+      setInsightsMessage({ type: 'success', text: 'Análise gerada com sucesso.' })
+    } catch {
+      setInsightsMessage({
+        type: 'error',
+        text: 'Não foi possível conectar ao serviço de IA. Verifique sua conexão e tente novamente.',
+      })
+    } finally {
+      setInsightsLoading(false)
     }
   }
 
@@ -335,6 +405,154 @@ export function ReportCenterClient({ activeProject, canUseAiBriefing }: ReportCe
           </article>
         ))}
       </div>
+
+      {canUseAiInsights && (
+        <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
+          <div className="grid gap-5 border-b border-neutral-100 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0AFAB9]">
+                Admin FAUS — Fase I
+              </p>
+              <h2 className="mt-2 text-xl font-semibold text-neutral-900">Análise com IA</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-500">
+                Gere uma análise consultiva do período com base nos dados do projeto. A IA identifica avanços, riscos, pontos de atenção e recomendações. Apenas o conteúdo do projeto é enviado — sem dados pessoais.
+              </p>
+              <p className="mt-2 text-xs font-medium text-neutral-400">
+                Geração manual. Nenhuma análise é criada automaticamente ao abrir o relatório.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerateInsights}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={insightsLoading || loadingType !== null}
+            >
+              {insightsLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Sparkles size={16} />
+              )}
+              {insightsLoading ? 'Gerando análise...' : 'Gerar análise com IA'}
+            </button>
+          </div>
+
+          {insightsMessage && (
+            <div
+              className={`mx-5 mt-5 rounded-xl border px-4 py-3 text-sm ${
+                insightsMessage.type === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : insightsMessage.type === 'info'
+                    ? 'border-neutral-200 bg-neutral-50 text-neutral-600'
+                    : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {insightsMessage.text}
+            </div>
+          )}
+
+          {insights && (
+            <div className="space-y-5 p-5">
+              {insights.executive_summary && (
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                    Resumo executivo
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-neutral-800">{insights.executive_summary}</p>
+                </div>
+              )}
+
+              {insights.key_progress.length > 0 && (
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                    Avanços identificados
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {insights.key_progress.map((item, index) => (
+                      <li key={index} className="flex gap-2 text-sm leading-6 text-emerald-800">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {insights.attention_points.length > 0 && (
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600">
+                    Pontos de atenção
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {insights.attention_points.map((item, index) => (
+                      <li key={index} className="flex gap-2 text-sm leading-6 text-amber-800">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {insights.risks.length > 0 && (
+                <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-600">
+                    Riscos identificados
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {insights.risks.map((item, index) => (
+                      <li key={index} className="flex gap-2 text-sm leading-6 text-red-800">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {insights.recommended_actions.length > 0 && (
+                <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                    Ações recomendadas
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {insights.recommended_actions.map((item, index) => (
+                      <li key={index} className="flex gap-2 text-sm leading-6 text-neutral-700">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {insights.client_message && (
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-950 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0AFAB9]">
+                    Mensagem consultiva ao cliente
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-neutral-300">{insights.client_message}</p>
+                </div>
+              )}
+
+              {insights.data_limitations.length > 0 && (
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                    Limitações dos dados
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {insights.data_limitations.map((item, index) => (
+                      <li key={index} className="flex gap-2 text-sm leading-6 text-neutral-500">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-300" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {canUseAiBriefing && (
         <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">

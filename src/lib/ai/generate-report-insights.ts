@@ -16,6 +16,8 @@ import { REPORT_INSIGHTS_SYSTEM_PROMPT } from '@/lib/ai/prompts'
 
 // Modelos válidos conhecidos — evita uso acidental de modelos inexistentes.
 const KNOWN_VALID_MODELS = new Set([
+  'gpt-4.1',
+  'gpt-4.1-mini',
   'gpt-4o',
   'gpt-4o-mini',
   'gpt-4-turbo',

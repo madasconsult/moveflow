@@ -30,8 +30,8 @@ import {
 } from '@/components/reports/pdf/utils'
 import type { ReportAction, ReportData, ReportMeeting } from '@/components/reports/pdf/types'
 
-const ACTION_LIMIT = 20
-const MEETING_LIMIT = 10
+const ACTION_LIMIT = 50
+const MEETING_LIMIT = 20
 
 /** Formata data ISO para dd/mm/aaaa sem timezone shift. */
 function fmtDate(value: string | null | undefined): string {

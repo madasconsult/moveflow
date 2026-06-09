@@ -35,6 +35,7 @@ export default async function ReportsPage() {
         <ReportCenterClient
           activeProject={activeProjectContext.activeProject}
           canUseAiBriefing={session.profile.role === 'admin_faus'}
+          canUseAiInsights={session.profile.role === 'admin_faus'}
         />
       )}
     </div>
