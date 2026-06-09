@@ -27,6 +27,7 @@ import {
 import { sanitizeConsultantComment } from '@/components/reports/pdf/utils'
 import { buildReportContext } from '@/lib/ai/build-report-context'
 import { generateReportInsights, AiInsightsError } from '@/lib/ai/generate-report-insights'
+import { loadAiInsightsData } from '@/lib/ai/load-insights-data'
 
 export const runtime = 'nodejs'
 
@@ -90,8 +91,12 @@ export async function POST(request: Request) {
     typeof payload.endDate === 'string' ? payload.endDate : null
   )
 
-  // ── 7. Dados do relatório ─────────────────────────────────────────────────
-  const data = await loadReportData(projectId, normalizedPeriod.startDate, normalizedPeriod.endDate)
+  // ── 7. Dados do relatório + contexto enriquecido (paralelo) ─────────────────
+  const [data, insightsData] = await Promise.all([
+    loadReportData(projectId, normalizedPeriod.startDate, normalizedPeriod.endDate),
+    loadAiInsightsData(projectId, normalizedPeriod.startDate, normalizedPeriod.endDate),
+  ])
+
   if (!data) {
     return NextResponse.json(
       { error: 'Não foi possível carregar os dados do projeto.' },
@@ -101,7 +106,7 @@ export async function POST(request: Request) {
 
   // ── 8. Sanitização e contexto ─────────────────────────────────────────────
   const consultantComment = sanitizeConsultantComment(payload.consultantComment)
-  const context = buildReportContext(data, consultantComment)
+  const context = buildReportContext(data, consultantComment, insightsData)
 
   // ── 8b. Pergunta específica do usuário ────────────────────────────────────
   const rawQuestion = typeof payload.customQuestion === 'string' ? payload.customQuestion.trim() : ''
